@@ -179,6 +179,11 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  List<Shop> getUserShops() {
+    if (_currentUser == null) return [];
+    return _shops.where((s) => s.ownerId == _currentUser!.id).toList();
+  }
+
   // ═══════════════════════════════════
   // FAVORITES
   // ═══════════════════════════════════
@@ -222,7 +227,10 @@ class AppProvider extends ChangeNotifier {
       subdomain: subdomain,
     );
     _shops.add(shop);
-    _currentUser = _currentUser!.copyWith(hasShop: true, shopId: shop.id);
+    // Support multiple shops: set first shop as default
+    if (!_currentUser!.hasShop) {
+      _currentUser = _currentUser!.copyWith(hasShop: true, shopId: shop.id);
+    }
     notifyListeners();
     return true;
   }
@@ -234,6 +242,7 @@ class AppProvider extends ChangeNotifier {
     required String imageUrl,
     bool isNeuf = true,
     String? shopId,
+    String? categoryId,
   }) {
     final targetShopId = shopId ?? _currentUser?.shopId;
     if (_currentUser == null || targetShopId == null) return false;
@@ -246,7 +255,7 @@ class AppProvider extends ChangeNotifier {
       description: description,
       price: price,
       imageUrl: imageUrl,
-      categoryId: '',
+      categoryId: categoryId ?? '',
       shopId: shop.id,
       sellerName: shop.name,
       isNeuf: isNeuf,

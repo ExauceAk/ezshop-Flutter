@@ -20,6 +20,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _descController = TextEditingController();
   final _priceController = TextEditingController();
   bool _isNeuf = true;
+  String _selectedCategoryId = '';
   List<File> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -157,6 +158,45 @@ class _AddProductScreenState extends State<AddProductScreen> {
               _buildLabel('Prix (\$)'),
               const SizedBox(height: 8),
               _buildTextField(_priceController, '0.00', keyboardType: TextInputType.number),
+
+              const SizedBox(height: 20),
+
+              // Category selector
+              _buildLabel('Catégorie'),
+              const SizedBox(height: 8),
+              Consumer<AppProvider>(
+                builder: (context, provider, _) {
+                  final categories = provider.categories;
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedCategoryId.isEmpty ? null : _selectedCategoryId,
+                      hint: Text(
+                        'Choisir une catégorie',
+                        style: GoogleFonts.poppins(color: AppTheme.textHint, fontSize: 14),
+                      ),
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textHint),
+                      items: categories.map((cat) {
+                        return DropdownMenuItem<String>(
+                          value: cat.id,
+                          child: Text(
+                            cat.name,
+                            style: GoogleFonts.poppins(fontSize: 14),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() => _selectedCategoryId = value ?? '');
+                      },
+                    ),
+                  );
+                },
+              ),
 
               const SizedBox(height: 20),
 
@@ -315,6 +355,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         price: double.parse(_priceController.text),
         isNeuf: _isNeuf,
         imageUrl: _selectedImages.first.path,
+        categoryId: _selectedCategoryId,
       );
 
       Navigator.pop(context);

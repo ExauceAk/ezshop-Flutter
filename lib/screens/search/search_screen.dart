@@ -276,14 +276,6 @@ class _SearchScreenState extends State<SearchScreen> {
                     style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.star_rounded, size: 14, color: AppTheme.warning),
-                      const SizedBox(width: 2),
-                      Text(product.rating.toString(), style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
                   Text(
                     '\$${product.price.toStringAsFixed(2)}',
                     style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.primary),

@@ -20,7 +20,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   final List<Widget> _screens = const [
     HomeScreen(),
     SearchScreen(),
-    ShopScreen(),
+    SizedBox.shrink(), // placeholder — center button opens ShopScreen as a route
     FavoritesScreen(),
     ProfileScreen(),
   ];
@@ -32,31 +32,35 @@ class _MainScaffoldState extends State<MainScaffold> {
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 20,
-              offset: Offset(0, -5),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(0, Icons.home_rounded, Icons.home_outlined, 'Accueil'),
-                _buildNavItem(1, Icons.search_rounded, Icons.search_outlined, 'Rechercher'),
-                _buildNavItem(2, Icons.storefront_rounded, Icons.storefront_outlined, 'Boutique'),
-                _buildNavItem(3, Icons.favorite_rounded, Icons.favorite_border_rounded, 'Favoris'),
-                _buildNavItem(4, Icons.person_rounded, Icons.person_outline_rounded, 'Profil'),
-              ],
-            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ShopScreen()),
+          );
+        },
+        backgroundColor: AppTheme.primary,
+        elevation: 4,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 28),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8,
+        color: Colors.white,
+        elevation: 10,
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(0, Icons.home_rounded, Icons.home_outlined, 'Accueil'),
+              _buildNavItem(1, Icons.search_rounded, Icons.search_outlined, 'Rechercher'),
+              const SizedBox(width: 48), // spacer for the center FAB
+              _buildNavItem(3, Icons.favorite_rounded, Icons.favorite_border_rounded, 'Favoris'),
+              _buildNavItem(4, Icons.person_rounded, Icons.person_outline_rounded, 'Profil'),
+            ],
           ),
         ),
       ),
@@ -68,17 +72,10 @@ class _MainScaffoldState extends State<MainScaffold> {
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: isActive
-            ? BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              )
-            : null,
+      child: SizedBox(
+        width: 64,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               isActive ? activeIcon : inactiveIcon,

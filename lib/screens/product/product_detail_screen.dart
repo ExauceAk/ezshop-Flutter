@@ -209,29 +209,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  // Rating
-                  Row(
-                    children: [
-                      ...List.generate(5, (index) {
-                        return Icon(
-                          index < product.rating.round()
-                              ? Icons.star_rounded
-                              : Icons.star_border_rounded,
-                          color: AppTheme.warning,
-                          size: 20,
-                        );
-                      }),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${product.rating} (${product.reviewCount} avis)',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 20),
                   // Description
                   Text(

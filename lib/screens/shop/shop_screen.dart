@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../models/shop_model.dart';
+import '../../models/product_model.dart';
 import '../product/product_detail_screen.dart';
 import 'add_product_screen.dart';
 import 'create_shop_screen.dart';
@@ -15,6 +17,8 @@ class ShopScreen extends StatefulWidget {
 }
 
 class _ShopScreenState extends State<ShopScreen> {
+  Shop? _selectedShop;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -22,55 +26,79 @@ class _ShopScreenState extends State<ShopScreen> {
       body: SafeArea(
         child: Consumer<AppProvider>(
           builder: (context, provider, _) {
-            if (!provider.currentUser!.hasShop) {
-              return _buildCreateShopView(provider);
-            }
-            return _buildShopView(provider);
+            final userShops = provider.getUserShops();
+
+            if (userShops.isEmpty) return _buildCreateShopView();
+            if (_selectedShop != null) return _buildShopDetailView(_selectedShop!, provider);
+            return _buildShopListView(userShops);
           },
         ),
       ),
     );
   }
 
-  Widget _buildCreateShopView(AppProvider provider) {
+  // ═══════════════════════════════════════
+  //  NO SHOPS → Empty state
+  // ═══════════════════════════════════════
+  Widget _buildCreateShopView() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.storefront_rounded, size: 60, color: AppTheme.primary),
+            // Decorative circles
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.06),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.storefront_rounded, size: 34, color: AppTheme.primary),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             Text(
-              'Créez votre boutique',
-              style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w800),
+              'Aucune boutique',
+              style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
-              'Commencez à vendre vos produits sur notre marketplace.\nCréez votre boutique en quelques secondes !',
+              'Vous n\'avez pas encore de boutique.\nCréez-la en quelques secondes !',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(fontSize: 14, color: AppTheme.textSecondary, height: 1.5),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 36),
             SizedBox(
               width: double.infinity,
               height: 56,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CreateShopScreen()),
-              );
-            },
-                child: const Text('Créer ma boutique'),
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateShopScreen()));
+                },
+                icon: const Icon(Icons.add_rounded, size: 22),
+                label: Text('Créer ma première boutique', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15)),
               ),
             ),
           ],
@@ -79,290 +107,460 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
-  Widget _buildShopView(AppProvider provider) {
-    final shop = provider.getShopById(provider.currentUser!.shopId!);
-    if (shop == null) return _buildCreateShopView(provider);
+  // ═══════════════════════════════════════
+  //  SHOP LIST
+  // ═══════════════════════════════════════
+  Widget _buildShopListView(List<Shop> shops) {
+    return Column(
+      children: [
+        // ─── Header ───
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                onPressed: () => Navigator.pop(context),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Mes Boutiques',
+                style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800),
+              ),
+              const Spacer(),
+              Text(
+                '${shops.length}',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
 
-    final shopProducts = provider.getProductsByShop(shop.id);
-
-    return CustomScrollView(
-      slivers: [
-        // ─── App Bar ───
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: Text(
-              'Ma Boutique',
-              style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w800),
-            ),
+        // ─── Shop list ───
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            itemCount: shops.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 14),
+            itemBuilder: (context, index) => _buildShopCard(shops[index]),
           ),
         ),
 
-        // ─── Shop Header ───
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: AppTheme.secondaryGradient,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.secondary.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+        // ─── Bottom create button ───
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 12,
+                offset: const Offset(0, -4),
               ),
-              child: Column(
+            ],
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateShopScreen()));
+              },
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: Text(
+                'Nouvelle boutique',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primary,
+                side: const BorderSide(color: AppTheme.primary, width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShopCard(Shop shop) {
+    final templateColors = {
+      'default': AppTheme.primary,
+      'fashion': const Color(0xFFE85D75),
+      'beauty': const Color(0xFFF5A623),
+      'tech': const Color(0xFF4A90D9),
+    };
+    final accent = templateColors[shop.template] ?? AppTheme.primary;
+    final templateNames = {'default': 'Standard', 'fashion': 'Mode', 'beauty': 'Beauté', 'tech': 'Tech'};
+
+    return GestureDetector(
+      onTap: () => setState(() => _selectedShop = shop),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 3)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ─── Gradient header ───
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [accent, accent.withOpacity(0.7)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(Icons.storefront_rounded, color: AppTheme.secondary, size: 30),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              shop.name,
-                              style: GoogleFonts.poppins(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              '${shop.productCount} produits',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.white.withOpacity(0.8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star_rounded, color: Colors.white, size: 16),
-                            const SizedBox(width: 4),
-                            Text(
-                              shop.rating.toString(),
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 22),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    shop.description,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: Colors.white.withOpacity(0.9),
-                      height: 1.4,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      shop.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star_rounded, color: Colors.white, size: 11),
+                        const SizedBox(width: 2),
+                        Text(shop.rating.toString(), style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 11, color: Colors.white)),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ),
-
-        // ─── Stats ───
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                _buildStatCard('Produits', '${shop.productCount}', Icons.inventory_2_outlined),
-                const SizedBox(width: 12),
-                _buildStatCard('Ventes', '127', Icons.trending_up_rounded),
-                const SizedBox(width: 12),
-                _buildStatCard('Note', shop.rating.toString(), Icons.star_rounded),
-              ],
+            // ─── Info chips ───
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+              child: Row(
+                children: [
+                  _buildInfoChip(Icons.inventory_2_outlined, '${shop.productCount}', accent),
+                  const SizedBox(width: 6),
+                  _buildInfoChip(Icons.palette_rounded, templateNames[shop.template] ?? 'Std', accent),
+                  const Spacer(),
+                  Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 18),
+                ],
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String label, Color accent) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: accent.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: accent),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: accent),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════
+  //  SHOP DETAIL
+  // ═══════════════════════════════════════
+  Widget _buildShopDetailView(Shop shop, AppProvider provider) {
+    final shopProducts = provider.getProductsByShop(shop.id);
+    final templateColors = {
+      'default': AppTheme.primary,
+      'fashion': const Color(0xFFE85D75),
+      'beauty': const Color(0xFFF5A623),
+      'tech': const Color(0xFF4A90D9),
+    };
+    final accent = templateColors[shop.template] ?? AppTheme.primary;
+
+    return Column(
+      children: [
+        // ─── AppBar ───
+        Container(
+          padding: const EdgeInsets.fromLTRB(4, 8, 16, 0),
+          color: Colors.white,
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => setState(() => _selectedShop = null),
+              ),
+              Expanded(
+                child: Text(
+                  shop.name,
+                  style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              // Template badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  shop.template.toUpperCase(),
+                  style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: accent),
+                ),
+              ),
+            ],
           ),
         ),
 
-        // ─── Products Header ───
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Mes Produits (${shopProducts.length})',
-                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => AddProductScreen(shopId: shop.id)),
-                  ),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: Text('Ajouter', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // ─── Products Grid ───
-        shopProducts.isEmpty
-            ? SliverToBoxAdapter(
+        // ─── Scrollable content ───
+        Expanded(
+          child: CustomScrollView(
+            slivers: [
+              // ─── Shop banner card ───
+              SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(40),
-                  child: Column(
-                    children: [
-                      Icon(Icons.inventory_2_outlined, size: 60, color: AppTheme.textHint.withOpacity(0.3)),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Aucun produit',
-                        style: GoogleFonts.poppins(color: AppTheme.textSecondary),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [accent, accent.withOpacity(0.7)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      Text(
-                        'Ajoutez votre premier produit',
-                        style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textHint),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.65,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final product = shopProducts[index];
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
-                          );
-                        },
-                        child: Container(
-                          decoration: AppTheme.cardDecoration,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                flex: 3,
-                                child: Container(
-                                  width: double.infinity,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFF1F3F5),
-                                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                    child: Image.network(
-                                      product.images.isNotEmpty ? product.images.first : '',
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, size: 30, color: AppTheme.textHint),
-                                    ),
-                                  ),
-                                ),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(color: accent.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 8)),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(18),
                               ),
-                              Expanded(
-                                flex: 2,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        product.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
-                                      ),
-                                      const Spacer(),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            '\$${product.price.toStringAsFixed(2)}',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppTheme.primary,
-                                            ),
-                                          ),
-                                          const Spacer(),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: product.isNeuf ? AppTheme.success.withOpacity(0.1) : AppTheme.warning.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              product.isNeuf ? 'Neuf' : 'Occ.',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 10,
-                                                color: product.isNeuf ? AppTheme.success : AppTheme.warning,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                              child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 32),
+                            ),
+                            const SizedBox(width: 18),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    shop.name,
+                                    style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white),
                                   ),
-                                ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${shop.productCount} produits • Note ${shop.rating}',
+                                    style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withOpacity(0.85)),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                    childCount: shopProducts.length,
+                        const SizedBox(height: 18),
+                        // Description
+                        Text(
+                          shop.description,
+                          style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withOpacity(0.9), height: 1.5),
+                        ),
+                        const SizedBox(height: 16),
+                        // Meta info row
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (shop.subdomain.isNotEmpty)
+                              _buildMetaChip(Icons.language_rounded, '${shop.subdomain}.mackettttz.test'),
+                            if (shop.whatsappLink.isNotEmpty)
+                              _buildMetaChip(Icons.chat_rounded, 'WhatsApp'),
+                            _buildMetaChip(Icons.palette_rounded, shop.template),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              // ─── Stats ───
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: Row(
+                    children: [
+                      _buildStatCard('Produits', '${shop.productCount}', Icons.inventory_2_outlined, accent),
+                      const SizedBox(width: 10),
+                      _buildStatCard('Ventes', '127', Icons.trending_up_rounded, AppTheme.success),
+                      const SizedBox(width: 10),
+                      _buildStatCard('Note', shop.rating.toString(), Icons.star_rounded, AppTheme.warning),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ─── Products header ───
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Produits (${shopProducts.length})',
+                        style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => AddProductScreen(shopId: shop.id)),
+                        ),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: Text('Ajouter', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13)),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ─── Products grid ───
+              shopProducts.isEmpty
+                  ? SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withOpacity(0.06),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.inventory_2_outlined, size: 36, color: AppTheme.primary.withOpacity(0.4)),
+                            ),
+                            const SizedBox(height: 16),
+                            Text('Aucun produit', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+                            const SizedBox(height: 4),
+                            Text('Ajoutez votre premier produit', style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textHint)),
+                          ],
+                        ),
+                      ),
+                    )
+                  : SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: SliverGrid(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.62,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _buildProductGridCard(shopProducts[index]),
+                          childCount: shopProducts.length,
+                        ),
+                      ),
+                    ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon) {
+  Widget _buildMetaChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: Colors.white),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: AppTheme.cardDecoration,
         child: Column(
           children: [
-            Icon(icon, color: AppTheme.primary, size: 20),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
             const SizedBox(height: 8),
             Text(
               value,
@@ -378,5 +576,98 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
-
+  Widget _buildProductGridCard(Product product) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)));
+      },
+      child: Container(
+        decoration: AppTheme.cardDecoration,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            Expanded(
+              flex: 3,
+              child: Stack(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF1F3F5),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      child: Image.network(
+                        product.images.isNotEmpty ? product.images.first : '',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, size: 30, color: AppTheme.textHint),
+                      ),
+                    ),
+                  ),
+                  // Condition badge
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: product.isNeuf ? AppTheme.success : AppTheme.warning,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        product.isNeuf ? 'Neuf' : 'Occasion',
+                        style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Info
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Text(
+                          '\$${product.price.toStringAsFixed(2)}',
+                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.primary),
+                        ),
+                        const Spacer(),
+                        if (product.discountPercent > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.error,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '-${product.discountPercent.round()}%',
+                              style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
