@@ -5,12 +5,13 @@ class Product {
   final double price;
   final double? oldPrice;
   final String imageUrl;
+  final List<String> imageUrls;
   final String categoryId;
   final String shopId;
   final String sellerName;
   final double rating;
   final int reviewCount;
-  final int stock;
+  final bool isNeuf;
   bool isFavorite;
 
   Product({
@@ -20,14 +21,24 @@ class Product {
     required this.price,
     this.oldPrice,
     required this.imageUrl,
+    this.imageUrls = const [],
     required this.categoryId,
     required this.shopId,
     required this.sellerName,
     this.rating = 4.0,
     this.reviewCount = 0,
-    this.stock = 10,
+    this.isNeuf = true,
     this.isFavorite = false,
   });
+
+  /// Returns all images: imageUrls if available, else [imageUrl]
+  List<String> get allImages {
+    if (imageUrls.isNotEmpty) return imageUrls;
+    return [imageUrl];
+  }
+
+  /// Alias used in UI screens
+  List<String> get images => allImages;
 
   Product copyWith({
     String? name,
@@ -35,8 +46,9 @@ class Product {
     double? price,
     double? oldPrice,
     String? imageUrl,
+    List<String>? imageUrls,
     String? categoryId,
-    int? stock,
+    bool? isNeuf,
     bool? isFavorite,
   }) {
     return Product(
@@ -46,12 +58,13 @@ class Product {
       price: price ?? this.price,
       oldPrice: oldPrice ?? this.oldPrice,
       imageUrl: imageUrl ?? this.imageUrl,
+      imageUrls: imageUrls ?? this.imageUrls,
       categoryId: categoryId ?? this.categoryId,
       shopId: shopId,
       sellerName: sellerName,
       rating: rating,
       reviewCount: reviewCount,
-      stock: stock ?? this.stock,
+      isNeuf: isNeuf ?? this.isNeuf,
       isFavorite: isFavorite ?? this.isFavorite,
     );
   }

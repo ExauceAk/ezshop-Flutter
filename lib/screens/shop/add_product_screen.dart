@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 
 class AddProductScreen extends StatefulWidget {
-  const AddProductScreen({super.key});
+  final String shopId;
+  const AddProductScreen({super.key, required this.shopId});
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -16,50 +19,23 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
   final _priceController = TextEditingController();
-  final _stockController = TextEditingController(text: '10');
-  String _selectedCategory = '';
+  bool _isNeuf = true;
+  List<File> _selectedImages = [];
+  final ImagePicker _picker = ImagePicker();
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descController.dispose();
-    _priceController.dispose();
-    _stockController.dispose();
-    super.dispose();
+  Future<void> _pickImages() async {
+    final images = await _picker.pickMultiImage(imageQuality: 80);
+    if (images.isNotEmpty) {
+      setState(() {
+        _selectedImages = images.map((x) => File(x.path)).toList();
+      });
+    }
   }
 
-  void _handleSubmit() {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedCategory.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Veuillez sélectionner une catégorie'),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-      return;
-    }
-    final provider = context.read<AppProvider>();
-    final success = provider.addProduct(
-      name: _nameController.text,
-      description: _descController.text,
-      price: double.parse(_priceController.text),
-      categoryId: _selectedCategory,
-      stock: int.parse(_stockController.text),
-    );
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Produit ajouté avec succès !'),
-          backgroundColor: AppTheme.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-      Navigator.pop(context);
-    }
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+    });
   }
 
   @override
@@ -67,11 +43,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: Text('Ajouter un produit', style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => Navigator.pop(context),
+        title: Text(
+          'Ajouter un produit',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
         ),
+        backgroundColor: Colors.white,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -80,153 +57,189 @@ class _AddProductScreenState extends State<AddProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── Image Upload ───
-              GestureDetector(
-                onTap: () {},
-                child: Container(
-                  width: double.infinity,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.border, width: 2, style: BorderStyle.solid),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 60,
-                        height: 60,
+              // Product images
+              Text(
+                'Photos du produit',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 120,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    ..._selectedImages.asMap().entries.map((entry) {
+                      return Stack(
+                        children: [
+                          Container(
+                            width: 120,
+                            height: 120,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              image: DecorationImage(
+                                image: FileImage(entry.value),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 12,
+                            child: GestureDetector(
+                              onTap: () => _removeImage(entry.key),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close, size: 14, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                    GestureDetector(
+                      onTap: _pickImages,
+                      child: Container(
+                        width: 120,
+                        height: 120,
                         decoration: BoxDecoration(
                           color: AppTheme.primary.withOpacity(0.1),
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppTheme.primary.withOpacity(0.3),
+                            width: 2,
+                          ),
                         ),
-                        child: const Icon(Icons.camera_alt_rounded, color: AppTheme.primary, size: 28),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_photo_alternate_outlined, color: AppTheme.primary, size: 32),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Ajouter',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Ajouter des photos',
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: AppTheme.primary),
-                      ),
-                      Text(
-                        'PNG, JPG (max 5 Mo)',
-                        style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textHint),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
 
-              // ─── Name ───
+              // Product name
               _buildLabel('Nom du produit'),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _nameController,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(hintText: 'Ex: iPhone 15 Pro'),
-                validator: (v) => v == null || v.isEmpty ? 'Nom requis' : null,
-              ),
+              _buildTextField(_nameController, 'Ex: iPhone 14 Pro Max'),
+
               const SizedBox(height: 20),
 
-              // ─── Description ───
+              // Description
               _buildLabel('Description'),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _descController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  hintText: 'Décrivez votre produit en détail...',
-                  alignLabelWithHint: true,
-                ),
-                validator: (v) => v == null || v.isEmpty ? 'Description requise' : null,
-              ),
+              _buildTextField(_descController, 'Décrivez votre produit...', maxLines: 3),
+
               const SizedBox(height: 20),
 
-              // ─── Price ───
-              _buildLabel('Prix'),
+              // Price
+              _buildLabel('Prix (\$)'),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _priceController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  hintText: '0.00',
-                  prefixText: '\$ ',
-                  prefixStyle: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.primary),
-                ),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Prix requis';
-                  if (double.tryParse(v) == null) return 'Prix invalide';
-                  return null;
-                },
-              ),
+              _buildTextField(_priceController, '0.00', keyboardType: TextInputType.number),
+
               const SizedBox(height: 20),
 
-              // ─── Stock ───
-              _buildLabel('Stock'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _stockController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(hintText: '10'),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Stock requis';
-                  if (int.tryParse(v) == null) return 'Nombre invalide';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // ─── Category ───
-              _buildLabel('Catégorie'),
+              // Condition toggle
+              _buildLabel('État du produit'),
               const SizedBox(height: 12),
-              Consumer<AppProvider>(
-                builder: (context, provider, _) {
-                  return Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: provider.categories.map((cat) {
-                      final isSelected = cat.id == _selectedCategory;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedCategory = cat.id),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _isNeuf = true),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
-                            color: isSelected ? AppTheme.primary : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: isSelected
-                                    ? AppTheme.primary.withOpacity(0.3)
-                                    : Colors.black.withOpacity(0.05),
-                                blurRadius: 6,
-                              ),
-                            ],
+                            color: _isNeuf ? AppTheme.success : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            cat.name,
+                            'Neuf',
+                            textAlign: TextAlign.center,
                             style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: isSelected ? Colors.white : AppTheme.textPrimary,
+                              fontWeight: _isNeuf ? FontWeight.w700 : FontWeight.w500,
+                              color: _isNeuf ? Colors.white : AppTheme.textSecondary,
                             ),
                           ),
                         ),
-                      );
-                    }).toList(),
-                  );
-                },
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _isNeuf = false),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: !_isNeuf ? AppTheme.warning : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Occasion',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontWeight: !_isNeuf ? FontWeight.w700 : FontWeight.w500,
+                              color: !_isNeuf ? Colors.white : AppTheme.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+
               const SizedBox(height: 32),
 
-              // ─── Submit ───
+              // Submit button
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _handleSubmit,
-                  child: const Text('Publier le produit'),
+                  onPressed: _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Publier le produit',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -239,7 +252,78 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+      style: GoogleFonts.poppins(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppTheme.textPrimary,
+      ),
     );
+  }
+
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hint, {
+    int maxLines = 1,
+    TextInputType? keyboardType,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextFormField(
+        controller: controller,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.poppins(color: AppTheme.textHint),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Ce champ est requis';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  void _submit() {
+    if (_formKey.currentState!.validate()) {
+      if (_selectedImages.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Veuillez ajouter au moins une photo', style: GoogleFonts.poppins()),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+        return;
+      }
+
+      context.read<AppProvider>().addProduct(
+        shopId: widget.shopId,
+        name: _nameController.text,
+        description: _descController.text,
+        price: double.parse(_priceController.text),
+        isNeuf: _isNeuf,
+        imageUrl: _selectedImages.first.path,
+      );
+
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Produit publié avec succès !', style: GoogleFonts.poppins()),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+    }
   }
 }

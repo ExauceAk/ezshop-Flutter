@@ -5,6 +5,7 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../product/product_detail_screen.dart';
 import 'add_product_screen.dart';
+import 'create_shop_screen.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -63,7 +64,12 @@ class _ShopScreenState extends State<ShopScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () => _showCreateShopDialog(context, provider),
+                onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CreateShopScreen()),
+              );
+            },
                 child: const Text('Créer ma boutique'),
               ),
             ),
@@ -212,7 +218,7 @@ class _ShopScreenState extends State<ShopScreen> {
                 ElevatedButton.icon(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const AddProductScreen()),
+                    MaterialPageRoute(builder: (_) => AddProductScreen(shopId: shop.id)),
                   ),
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text('Ajouter', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
@@ -281,7 +287,7 @@ class _ShopScreenState extends State<ShopScreen> {
                                   child: ClipRRect(
                                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                                     child: Image.network(
-                                      product.imageUrl,
+                                      product.images.isNotEmpty ? product.images.first : '',
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, size: 30, color: AppTheme.textHint),
                                     ),
@@ -316,12 +322,16 @@ class _ShopScreenState extends State<ShopScreen> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: AppTheme.success.withOpacity(0.1),
+                                              color: product.isNeuf ? AppTheme.success.withOpacity(0.1) : AppTheme.warning.withOpacity(0.1),
                                               borderRadius: BorderRadius.circular(4),
                                             ),
                                             child: Text(
-                                              '${product.stock}',
-                                              style: GoogleFonts.poppins(fontSize: 10, color: AppTheme.success),
+                                              product.isNeuf ? 'Neuf' : 'Occ.',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 10,
+                                                color: product.isNeuf ? AppTheme.success : AppTheme.warning,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -368,70 +378,5 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
-  void _showCreateShopDialog(BuildContext context, AppProvider provider) {
-    final nameController = TextEditingController();
-    final descController = TextEditingController();
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.6,
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text('Nouvelle boutique', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Text(
-              'Donnez un nom à votre boutique',
-              style: GoogleFonts.poppins(color: AppTheme.textSecondary),
-            ),
-            const SizedBox(height: 24),
-            Text('Nom de la boutique', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: nameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(hintText: 'Ma Boutique'),
-            ),
-            const SizedBox(height: 16),
-            Text('Description', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: descController,
-              maxLines: 3,
-              decoration: const InputDecoration(hintText: 'Décrivez votre boutique...'),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (nameController.text.isNotEmpty) {
-                    provider.createShop(nameController.text, descController.text);
-                    Navigator.pop(ctx);
-                  }
-                },
-                child: const Text('Créer la boutique'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

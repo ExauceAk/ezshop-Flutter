@@ -220,7 +220,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                     child: Image.network(
-                      product.imageUrl,
+                      product.images.isNotEmpty ? product.images.first : '',
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, size: 40, color: AppTheme.textHint),
                     ),

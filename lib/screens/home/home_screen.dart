@@ -5,6 +5,7 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/product_model.dart';
 import '../product/product_detail_screen.dart';
+import '../shop/create_shop_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,11 +26,10 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildHeader(),
               _buildSearchBar(),
-              _buildBanner(),
-              _buildCategories(),
-              _buildFlashSale(),
+              _buildCreateShopBanner(),
+              _buildConditionToggle(),
               _buildPopularProducts(),
-              _buildRecommendedShops(),
+              _buildPopularShops(),
               const SizedBox(height: 20),
             ],
           ),
@@ -95,7 +95,6 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: GestureDetector(
         onTap: () {
-          // Switch to search tab
           final provider = context.read<AppProvider>();
           provider.setSearchQuery('');
         },
@@ -138,240 +137,187 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBanner() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      height: 160,
-      decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            right: 30,
-            bottom: -30,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '🔥 Promo',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Jusqu\'à -40%',
-                  style: GoogleFonts.poppins(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  'Sur les produits électroniques',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategories() {
-    return Consumer<AppProvider>(
-      builder: (context, provider, _) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Catégories',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {},
-                    child: Text('Voir tout', style: GoogleFonts.poppins(color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(
-              height: 90,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: provider.categories.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final cat = provider.categories[index];
-                  return _buildCategoryChip(cat.name, cat.id == provider.selectedCategory, () {
-                    provider.setSelectedCategory(cat.id);
-                  });
-                },
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildCategoryChip(String label, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 56,
-            height: 56,
+  Widget _buildCreateShopBanner() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CreateShopScreen()),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            constraints: const BoxConstraints(minHeight: 140),
+            width: double.infinity,
             decoration: BoxDecoration(
-              color: isSelected ? AppTheme.primary : Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: isSelected
-                      ? AppTheme.primary.withOpacity(0.3)
-                      : Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  color: AppTheme.primary.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
-            child: Icon(
-              Icons.category_rounded,
-              color: isSelected ? Colors.white : AppTheme.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFlashSale() {
-    return Consumer<AppProvider>(
-      builder: (context, provider, _) {
-        final flashProducts = provider.flashSaleProducts;
-        if (flashProducts.isEmpty) return const SizedBox.shrink();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+            child: Stack(
+              children: [
+                Positioned(
+                  right: -20,
+                  top: -20,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 30,
+                  bottom: -30,
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppTheme.accent.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          '⚡ Flash Sale',
+                          '🏪 Marketplace',
                           style: GoogleFonts.poppins(
-                            fontSize: 14,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Créez votre propre boutique',
+                        style: GoogleFonts.poppins(
+                          fontSize: constraints.maxWidth < 400 ? 18 : 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Proposez vos produits et vendez en ligne',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          'Commencer →',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.accent,
+                            color: AppTheme.primary,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  TextButton(
-                    onPressed: () {},
-                    child: Text('Voir tout', style: GoogleFonts.poppins(color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            SizedBox(
-              height: 220,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: flashProducts.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  return _buildProductCard(flashProducts[index]);
-                },
-              ),
-            ),
-          ],
+          ),
         );
       },
+    );
+  }
+
+  Widget _buildConditionToggle() {
+    return Consumer<AppProvider>(
+      builder: (context, provider, _) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                _buildToggleBtn('Tous', provider.filterNeuf == null, () {
+                  provider.setFilterNeuf(null);
+                }),
+                _buildToggleBtn('Neuf', provider.filterNeuf == true, () {
+                  provider.setFilterNeuf(true);
+                }),
+                _buildToggleBtn('Occasion', provider.filterNeuf == false, () {
+                  provider.setFilterNeuf(false);
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildToggleBtn(String label, bool isSelected, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected ? Colors.white : AppTheme.textSecondary,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildPopularProducts() {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
+        final filtered = provider.filteredProducts;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -381,31 +327,45 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Produits populaires',
+                    'Produits',
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  TextButton(
-                    onPressed: () {},
-                    child: Text('Voir tout', style: GoogleFonts.poppins(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                  Text(
+                    '${filtered.length} résultat(s)',
+                    style: GoogleFonts.poppins(fontSize: 13, color: AppTheme.textSecondary),
                   ),
                 ],
               ),
             ),
-            SizedBox(
-              height: 220,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: provider.products.length > 6 ? 6 : provider.products.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  return _buildProductCard(provider.products[index]);
-                },
-              ),
-            ),
+            filtered.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(40),
+                    child: Column(
+                      children: [
+                        Icon(Icons.search_off_rounded, size: 60, color: AppTheme.textHint.withOpacity(0.3)),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Aucun produit trouvé',
+                          style: GoogleFonts.poppins(color: AppTheme.textSecondary),
+                        ),
+                      ],
+                    ),
+                  )
+                : SizedBox(
+                    height: 220,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        return _buildProductCard(filtered[index]);
+                      },
+                    ),
+                  ),
           ],
         );
       },
@@ -440,16 +400,37 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                     child: Image.network(
-                      product.imageUrl,
+                      product.images.isNotEmpty ? product.images.first : '',
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, size: 40, color: AppTheme.textHint),
                     ),
                   ),
                 ),
+                // Condition badge
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: product.isNeuf ? AppTheme.success : AppTheme.warning,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      product.isNeuf ? 'Neuf' : 'Occasion',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                // Discount badge
                 if (product.discountPercent > 0)
                   Positioned(
                     top: 8,
-                    left: 8,
+                    right: 8,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
@@ -466,8 +447,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
+                // Favorite
                 Positioned(
-                  top: 8,
+                  top: 32,
                   right: 8,
                   child: GestureDetector(
                     onTap: () {
@@ -555,7 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRecommendedShops() {
+  Widget _buildPopularShops() {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
         return Column(

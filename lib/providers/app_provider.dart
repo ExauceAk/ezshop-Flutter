@@ -23,6 +23,7 @@ class AppProvider extends ChangeNotifier {
   List<Order> _orders = [];
   String _searchQuery = '';
   String _selectedCategory = '';
+  bool? _filterNeuf; // null = tous, true = neuf, false = occasion
 
   List<Product> get products => _products;
   List<Shop> get shops => _shops;
@@ -30,6 +31,7 @@ class AppProvider extends ChangeNotifier {
   List<Order> get orders => _orders;
   String get searchQuery => _searchQuery;
   String get selectedCategory => _selectedCategory;
+  bool? get filterNeuf => _filterNeuf;
 
   AppProvider() {
     _products = List.from(MockData.products);
@@ -131,6 +133,9 @@ class AppProvider extends ChangeNotifier {
 
   List<Product> get filteredProducts {
     List<Product> result = List.from(_products);
+    if (_filterNeuf != null) {
+      result = result.where((p) => p.isNeuf == _filterNeuf).toList();
+    }
     if (_selectedCategory.isNotEmpty) {
       result = result.where((p) => p.categoryId == _selectedCategory).toList();
     }
@@ -150,6 +155,11 @@ class AppProvider extends ChangeNotifier {
 
   void setSelectedCategory(String categoryId) {
     _selectedCategory = (_selectedCategory == categoryId) ? '' : categoryId;
+    notifyListeners();
+  }
+
+  void setFilterNeuf(bool? value) {
+    _filterNeuf = value;
     notifyListeners();
   }
 
@@ -181,93 +191,25 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  List<Product> get flashSaleProducts {
-    return _products.where((p) => p.oldPrice != null && p.oldPrice! > p.price).toList();
-  }
-
   List<Product> get favoriteProducts {
     return _products.where((p) => p.isFavorite).toList();
   }
 
   // ═══════════════════════════════════
-  // CART
+  // ORDERS (kept for history, no cart)
   // ═══════════════════════════════════
-
-  final Map<String, int> _cart = {};
-
-  Map<String, int> get cart => _cart;
-
-  int get cartCount => _cart.values.fold(0, (sum, qty) => sum + qty);
-
-  double get cartTotal {
-    double total = 0;
-    _cart.forEach((productId, quantity) {
-      final product = _products.firstWhere((p) => p.id == productId);
-      total += product.price * quantity;
-    });
-    return total;
-  }
-
-  List<Product> get cartProducts {
-    return _cart.keys.map((id) => _products.firstWhere((p) => p.id == id)).toList();
-  }
-
-  void addToCart(String productId) {
-    _cart[productId] = (_cart[productId] ?? 0) + 1;
-    notifyListeners();
-  }
-
-  void removeFromCart(String productId) {
-    _cart.remove(productId);
-    notifyListeners();
-  }
-
-  void updateCartQuantity(String productId, int quantity) {
-    if (quantity <= 0) {
-      _cart.remove(productId);
-    } else {
-      _cart[productId] = quantity;
-    }
-    notifyListeners();
-  }
-
-  void clearCart() {
-    _cart.clear();
-    notifyListeners();
-  }
-
-  // ═══════════════════════════════════
-  // ORDERS
-  // ═══════════════════════════════════
-
-  void placeOrder() {
-    if (_cart.isEmpty || _currentUser == null) return;
-    final items = _cart.entries.map((e) {
-      final product = _products.firstWhere((p) => p.id == e.key);
-      return OrderItem(
-        productId: e.key,
-        productName: product.name,
-        productPrice: product.price,
-        quantity: e.value,
-        imageUrl: product.imageUrl,
-      );
-    }).toList();
-    final order = Order(
-      id: 'ord_${DateTime.now().millisecondsSinceEpoch}',
-      items: items,
-      totalAmount: cartTotal,
-      date: DateTime.now(),
-    );
-    _orders.insert(0, order);
-    _cart.clear();
-    notifyListeners();
-  }
 
   // ═══════════════════════════════════
   // SHOP MANAGEMENT
   // ═══════════════════════════════════
 
-  bool createShop(String name, String description) {
+  bool createShop({
+    required String name,
+    required String description,
+    String whatsappLink = '',
+    String template = 'default',
+    String subdomain = '',
+  }) {
     if (_currentUser == null || name.isEmpty) return false;
     final shop = Shop(
       id: 'shop_${DateTime.now().millisecondsSinceEpoch}',
@@ -275,6 +217,9 @@ class AppProvider extends ChangeNotifier {
       description: description,
       ownerId: _currentUser!.id,
       createdAt: DateTime.now(),
+      whatsappLink: whatsappLink,
+      template: template,
+      subdomain: subdomain,
     );
     _shops.add(shop);
     _currentUser = _currentUser!.copyWith(hasShop: true, shopId: shop.id);
@@ -286,11 +231,13 @@ class AppProvider extends ChangeNotifier {
     required String name,
     required String description,
     required double price,
-    required String categoryId,
-    int stock = 10,
+    required String imageUrl,
+    bool isNeuf = true,
+    String? shopId,
   }) {
-    if (_currentUser == null || _currentUser!.shopId == null) return false;
-    final shop = getShopById(_currentUser!.shopId!);
+    final targetShopId = shopId ?? _currentUser?.shopId;
+    if (_currentUser == null || targetShopId == null) return false;
+    final shop = getShopById(targetShopId);
     if (shop == null) return false;
 
     final product = Product(
@@ -298,11 +245,11 @@ class AppProvider extends ChangeNotifier {
       name: name,
       description: description,
       price: price,
-      imageUrl: 'https://picsum.photos/400/400?random=${DateTime.now().millisecondsSinceEpoch}',
-      categoryId: categoryId,
+      imageUrl: imageUrl,
+      categoryId: '',
       shopId: shop.id,
       sellerName: shop.name,
-      stock: stock,
+      isNeuf: isNeuf,
     );
     _products.insert(0, product);
     shop.productCount++;
@@ -328,7 +275,7 @@ class AppProvider extends ChangeNotifier {
       Order(
         id: 'ord2',
         items: [
-          OrderItem(productId: 'prod3', productName: 'Robe d\'été florale', productPrice: 49.99, quantity: 2, imageUrl: 'https://picsum.photos/400/400?random=3'),
+          OrderItem(productId: 'prod3', productName: "Robe d'été florale", productPrice: 49.99, quantity: 2, imageUrl: 'https://picsum.photos/400/400?random=3'),
           OrderItem(productId: 'prod5', productName: 'Sérum Vitamine C', productPrice: 29.99, quantity: 1, imageUrl: 'https://picsum.photos/400/400?random=5'),
         ],
         totalAmount: 129.97,

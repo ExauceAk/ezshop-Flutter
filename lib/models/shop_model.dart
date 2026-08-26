@@ -8,6 +8,9 @@ class Shop {
   double rating;
   int productCount;
   DateTime createdAt;
+  String whatsappLink;
+  String template;
+  String subdomain;
 
   Shop({
     required this.id,
@@ -19,6 +22,9 @@ class Shop {
     this.rating = 4.0,
     this.productCount = 0,
     required this.createdAt,
+    this.whatsappLink = '',
+    this.template = 'default',
+    this.subdomain = '',
   });
 
   Shop copyWith({
@@ -28,6 +34,9 @@ class Shop {
     String? bannerUrl,
     double? rating,
     int? productCount,
+    String? whatsappLink,
+    String? template,
+    String? subdomain,
   }) {
     return Shop(
       id: id,
@@ -39,6 +48,9 @@ class Shop {
       rating: rating ?? this.rating,
       productCount: productCount ?? this.productCount,
       createdAt: createdAt,
+      whatsappLink: whatsappLink ?? this.whatsappLink,
+      template: template ?? this.template,
+      subdomain: subdomain ?? this.subdomain,
     );
   }
 }
