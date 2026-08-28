@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/shop_model.dart';
@@ -47,29 +48,25 @@ class _ShopScreenState extends State<ShopScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Decorative circles
             Stack(
               alignment: Alignment.center,
               children: [
                 Container(
-                  width: 140,
-                  height: 140,
+                  width: 140, height: 140,
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withOpacity(0.06),
                     shape: BoxShape.circle,
                   ),
                 ),
                 Container(
-                  width: 100,
-                  height: 100,
+                  width: 100, height: 100,
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                 ),
                 Container(
-                  width: 70,
-                  height: 70,
+                  width: 70, height: 70,
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withOpacity(0.15),
                     shape: BoxShape.circle,
@@ -79,10 +76,7 @@ class _ShopScreenState extends State<ShopScreen> {
               ],
             ),
             const SizedBox(height: 32),
-            Text(
-              'Aucune boutique',
-              style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
+            Text('Aucune boutique', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             Text(
               'Vous n\'avez pas encore de boutique.\nCréez-la en quelques secondes !',
@@ -91,12 +85,9 @@ class _ShopScreenState extends State<ShopScreen> {
             ),
             const SizedBox(height: 36),
             SizedBox(
-              width: double.infinity,
-              height: 56,
+              width: double.infinity, height: 56,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateShopScreen()));
-                },
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateShopScreen())),
                 icon: const Icon(Icons.add_rounded, size: 22),
                 label: Text('Créer ma première boutique', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15)),
               ),
@@ -113,7 +104,6 @@ class _ShopScreenState extends State<ShopScreen> {
   Widget _buildShopListView(List<Shop> shops) {
     return Column(
       children: [
-        // ─── Header ───
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
           child: Row(
@@ -123,25 +113,13 @@ class _ShopScreenState extends State<ShopScreen> {
                 onPressed: () => Navigator.pop(context),
               ),
               const SizedBox(width: 4),
-              Text(
-                'Mes Boutiques',
-                style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800),
-              ),
+              Text('Mes Boutiques', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800)),
               const Spacer(),
-              Text(
-                '${shops.length}',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.primary,
-                ),
-              ),
+              Text('${shops.length}', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.primary)),
             ],
           ),
         ),
         const SizedBox(height: 8),
-
-        // ─── Shop list ───
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -150,32 +128,20 @@ class _ShopScreenState extends State<ShopScreen> {
             itemBuilder: (context, index) => _buildShopCard(shops[index]),
           ),
         ),
-
-        // ─── Bottom create button ───
         Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           decoration: BoxDecoration(
             color: Colors.white,
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 12,
-                offset: const Offset(0, -4),
-              ),
+              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, -4)),
             ],
           ),
           child: SizedBox(
-            width: double.infinity,
-            height: 54,
+            width: double.infinity, height: 54,
             child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateShopScreen()));
-              },
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateShopScreen())),
               icon: const Icon(Icons.add_rounded, size: 20),
-              label: Text(
-                'Nouvelle boutique',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15),
-              ),
+              label: Text('Nouvelle boutique', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.primary,
                 side: const BorderSide(color: AppTheme.primary, width: 1.5),
@@ -204,31 +170,26 @@ class _ShopScreenState extends State<ShopScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 3)),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 3))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ─── Gradient header ───
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [accent, accent.withOpacity(0.7)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
                 ),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Row(
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 44, height: 44,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.25),
                       borderRadius: BorderRadius.circular(12),
@@ -237,20 +198,13 @@ class _ShopScreenState extends State<ShopScreen> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      shop.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-                    ),
+                    child: Text(shop.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
+                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.25), borderRadius: BorderRadius.circular(6)),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -263,7 +217,6 @@ class _ShopScreenState extends State<ShopScreen> {
                 ],
               ),
             ),
-            // ─── Info chips ───
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
               child: Row(
@@ -285,28 +238,21 @@ class _ShopScreenState extends State<ShopScreen> {
   Widget _buildInfoChip(IconData icon, String label, Color accent) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-      decoration: BoxDecoration(
-        color: accent.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(6),
-      ),
+      decoration: BoxDecoration(color: accent.withOpacity(0.08), borderRadius: BorderRadius.circular(6)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 11, color: accent),
           const SizedBox(width: 3),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: accent),
-          ),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: accent)),
         ],
       ),
     );
   }
 
   // ═══════════════════════════════════════
-  //  SHOP DETAIL
+  //  SHOP DETAIL (new design)
   // ═══════════════════════════════════════
   Widget _buildShopDetailView(Shop shop, AppProvider provider) {
     final shopProducts = provider.getProductsByShop(shop.id);
@@ -339,14 +285,43 @@ class _ShopScreenState extends State<ShopScreen> {
               ),
               // Template badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: accent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  shop.template.toUpperCase(),
-                  style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: accent),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      shop.template.toUpperCase(),
+                      style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w800, color: accent),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(Icons.keyboard_arrow_down_rounded, color: accent, size: 16),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Notification bell
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.background,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(Icons.notifications_outlined, size: 22, color: AppTheme.textSecondary),
+                    Positioned(
+                      top: 8, right: 10,
+                      child: Container(
+                        width: 8, height: 8,
+                        decoration: const BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -360,90 +335,159 @@ class _ShopScreenState extends State<ShopScreen> {
               // ─── Shop banner card ───
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [accent, accent.withOpacity(0.7)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
                       borderRadius: BorderRadius.circular(22),
                       boxShadow: [
                         BoxShadow(color: accent.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 8)),
                       ],
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 200,
+                        child: Stack(
+                          fit: StackFit.expand,
                           children: [
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.25),
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 32),
+                            // Full background image
+                            Image.asset(
+                              'assets/images/storefront-illustration-preview.png',
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
                             ),
-                            const SizedBox(width: 18),
-                            Expanded(
+                            // Content overlay
+                            Padding(
+                              padding: const EdgeInsets.all(22),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    shop.name,
-                                    style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white),
+                                  // Shop icon + name + rating
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 64, height: 64,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.25),
+                                          borderRadius: BorderRadius.circular(18),
+                                        ),
+                                        child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 32),
+                                      ),
+                                      const SizedBox(width: 18),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(shop.name,
+                                                style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                                            const SizedBox(height: 4),
+                                            Text('${shop.productCount} produits • Note ${shop.rating}',
+                                                style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withOpacity(0.85))),
+                                            const SizedBox(height: 4),
+                                            // Star rating
+                                            Row(
+                                              children: List.generate(5, (i) {
+                                                return Icon(
+                                                  i < shop.rating.round() ? Icons.star_rounded : Icons.star_outline_rounded,
+                                                  color: const Color(0xFFFFD700),
+                                                  size: 18,
+                                                );
+                                              }),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${shop.productCount} produits • Note ${shop.rating}',
-                                    style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withOpacity(0.85)),
+                                  const SizedBox(height: 18),
+                                  // Meta chips row
+                                  Row(
+                                    children: [
+                                      if (shop.subdomain.isNotEmpty)
+                                        _buildDetailMetaChip(Icons.language_rounded, '${shop.subdomain}.mackettttz.test', 'Domaine de la boutique'),
+                                      if (shop.subdomain.isNotEmpty) const SizedBox(width: 10),
+                                      _buildDetailMetaChip(Icons.palette_rounded, shop.template, 'Thème actif'),
+                                    ],
                                   ),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 18),
-                        // Description
-                        Text(
-                          shop.description,
-                          style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withOpacity(0.9), height: 1.5),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // ─── Sales banner ───
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42, height: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEDE7F6),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.trending_up_rounded, color: AppTheme.primary, size: 22),
                         ),
-                        const SizedBox(height: 16),
-                        // Meta info row
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            if (shop.subdomain.isNotEmpty)
-                              _buildMetaChip(Icons.language_rounded, '${shop.subdomain}.mackettttz.test'),
-                            if (shop.whatsappLink.isNotEmpty)
-                              _buildMetaChip(Icons.chat_rounded, 'WhatsApp'),
-                            _buildMetaChip(Icons.palette_rounded, shop.template),
-                          ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Bravo ! Vos ventes sont en hausse',
+                                  style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 2),
+                              RichText(
+                                text: TextSpan(
+                                  text: 'Vous avez ',
+                                  style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
+                                  children: [
+                                    TextSpan(
+                                      text: '22%',
+                                      style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.success),
+                                    ),
+                                    TextSpan(text: ' de ventes en plus cette semaine'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
                       ],
                     ),
                   ),
                 ),
               ),
 
-              // ─── Stats ───
+              // ─── Stats row (3 columns) ───
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: Row(
                     children: [
-                      _buildStatCard('Produits', '${shop.productCount}', Icons.inventory_2_outlined, accent),
+                      _buildStatCard('Produits', '${shop.productCount}', Icons.shopping_bag_outlined, const Color(0xFFE8EAF6)),
                       const SizedBox(width: 10),
-                      _buildStatCard('Ventes', '127', Icons.trending_up_rounded, AppTheme.success),
+                      _buildStatCard('Ventes', '127', Icons.trending_up_rounded, const Color(0xFFE8F5E9), change: '+22%', changeColor: AppTheme.success),
                       const SizedBox(width: 10),
-                      _buildStatCard('Note', shop.rating.toString(), Icons.star_rounded, AppTheme.warning),
+                      _buildStatCard('Note', shop.rating.toString(), Icons.star_rounded, const Color(0xFFFCE4EC), change: '+0.5', changeColor: AppTheme.success),
                     ],
                   ),
                 ),
@@ -452,23 +496,23 @@ class _ShopScreenState extends State<ShopScreen> {
               // ─── Products header ───
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Produits (${shopProducts.length})',
-                        style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => AddProductScreen(shopId: shop.id)),
-                        ),
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: Text('Ajouter', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13)),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      Text('Produits (${shopProducts.length})',
+                          style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700)),
+                      SizedBox(
+                        height: 40,
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.push(
+                            context, MaterialPageRoute(builder: (_) => AddProductScreen(shopId: shop.id)),
+                          ),
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: Text('Ajouter', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13)),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
                         ),
                       ),
                     ],
@@ -476,7 +520,7 @@ class _ShopScreenState extends State<ShopScreen> {
                 ),
               ),
 
-              // ─── Products grid ───
+              // ─── Products list ───
               shopProducts.isEmpty
                   ? SliverToBoxAdapter(
                       child: Padding(
@@ -484,8 +528,7 @@ class _ShopScreenState extends State<ShopScreen> {
                         child: Column(
                           children: [
                             Container(
-                              width: 80,
-                              height: 80,
+                              width: 80, height: 80,
                               decoration: BoxDecoration(
                                 color: AppTheme.primary.withOpacity(0.06),
                                 shape: BoxShape.circle,
@@ -501,74 +544,103 @@ class _ShopScreenState extends State<ShopScreen> {
                       ),
                     )
                   : SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      sliver: SliverGrid(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.62,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildProductGridCard(shopProducts[index]),
+                          (context, index) => _buildProductListCard(shopProducts[index]),
                           childCount: shopProducts.length,
                         ),
                       ),
                     ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              // ─── Motivational banner ───
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                      ],
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 48, height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3E8FF),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(Icons.local_offer_outlined, color: AppTheme.primary, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Envie d'augmenter vos ventes ?",
+                                  style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text('Ajoutez plus de produits et attirez plus de clients vers votre boutique.',
+                                  style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary, height: 1.4)),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppTheme.primary.withOpacity(0.3), width: 1),
+                                ),
+                                child: Text('Voir conseils',
+                                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.primary)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.close_rounded, size: 18, color: AppTheme.textHint),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
+
       ],
     );
   }
 
-  Widget _buildMetaChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: Colors.white),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  // ─── Meta chip for detail banner (with subtitle) ───
+  Widget _buildDetailMetaChip(IconData icon, String title, String subtitle) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: AppTheme.cardDecoration,
-        child: Column(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
+            Icon(icon, size: 16, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(fontSize: 9, color: Colors.white.withOpacity(0.7))),
+                ],
               ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
-            ),
-            Text(
-              label,
-              style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
             ),
           ],
         ),
@@ -576,98 +648,119 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
-  Widget _buildProductGridCard(Product product) {
+  // ─── Stat card (4-column with change) ───
+  Widget _buildStatCard(String label, String value, IconData icon, Color bgColor, {String? change, Color? changeColor}) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+              child: Icon(icon, color: AppTheme.textPrimary, size: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(value,
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+            const SizedBox(height: 2),
+            Text(label,
+                style: GoogleFonts.poppins(fontSize: 10, color: AppTheme.textSecondary)),
+            if (change != null) ...[
+              const SizedBox(height: 4),
+              Text(change,
+                  style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w700, color: changeColor ?? AppTheme.success)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Product list card ───
+  Widget _buildProductListCard(Product product) {
     return GestureDetector(
       onTap: () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)));
       },
       child: Container(
-        decoration: AppTheme.cardDecoration,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Row(
           children: [
-            // Image
+            // Product image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                width: 80, height: 80,
+                color: const Color(0xFFF1F3F5),
+                child: Image.network(
+                  product.images.isNotEmpty ? product.images.first : '',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, size: 28, color: AppTheme.textHint),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Product info
             Expanded(
-              flex: 3,
-              child: Stack(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Neuf badge
                   Container(
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF1F3F5),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      child: Image.network(
-                        product.images.isNotEmpty ? product.images.first : '',
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, size: 30, color: AppTheme.textHint),
-                      ),
-                    ),
+                    child: Text('Neuf',
+                        style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w600, color: AppTheme.success)),
                   ),
-                  // Condition badge
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: product.isNeuf ? AppTheme.success : AppTheme.warning,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        product.isNeuf ? 'Neuf' : 'Occasion',
-                        style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
-                      ),
+                  const SizedBox(height: 6),
+                  Text(product.name,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text('\$${product.price.toStringAsFixed(2)}',
+                      style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.primary)),
+                  const SizedBox(height: 2),
+                  RichText(
+                    text: TextSpan(
+                      text: 'Stock: ',
+                      style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textSecondary),
+                      children: [
+                        TextSpan(
+                          text: '${(10 + product.price.round() % 20)}',
+                          style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.success),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            // Info
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const Spacer(),
-                    Row(
-                      children: [
-                        Text(
-                          '\$${product.price.toStringAsFixed(2)}',
-                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.primary),
-                        ),
-                        const Spacer(),
-                        if (product.discountPercent > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppTheme.error,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '-${product.discountPercent.round()}%',
-                              style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            // Menu icon
+            const Icon(Icons.more_vert_rounded, color: AppTheme.textHint, size: 22),
           ],
         ),
       ),
     );
   }
+
 }
