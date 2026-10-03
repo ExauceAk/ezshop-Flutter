@@ -52,6 +52,10 @@ class ApiClient {
 
   bool get hasSession => _accessToken != null;
 
+  /// Current bearer token, needed by callers that build their own requests,
+  /// such as the multipart image upload.
+  String? get accessToken => _accessToken;
+
   /// Restores a session saved by a previous run, if any.
   ///
   /// Called once at startup so a returning user stays signed in.

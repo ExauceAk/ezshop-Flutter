@@ -1,3 +1,10 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+
+import '../config/app_config.dart';
 import '../models/category_model.dart';
 import '../models/order_model.dart';
 import '../models/product_model.dart';
@@ -64,6 +71,9 @@ class MarketApi {
 
   /// Upper bound on pages walked, so a wrong `total` cannot spin forever.
   static const _maxPages = 20;
+
+  /// Images travel over the internet, so they get more room than a JSON call.
+  static const _uploadTimeout = Duration(seconds: 60);
 
   // ─── Auth ───
 
@@ -283,6 +293,51 @@ class MarketApi {
       'quantity': quantity,
     });
     return Product.fromJson(data as Map<String, dynamic>);
+  }
+
+  // ─── Media ───
+
+  /// Uploads an image and returns its permanent public URL.
+  ///
+  /// The file goes to the API, which stores it in the object storage bucket
+  /// and answers with the URL to persist on the shop or the product. A local
+  /// path cannot be stored: it only resolves on the device that picked it.
+  Future<String> uploadImage(File file, {required String folder}) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('${AppConfig.apiUrl}/media/upload'),
+    );
+
+    if (_client.hasSession) {
+      request.headers['Authorization'] = 'Bearer ${_client.accessToken}';
+    }
+    request.fields['folder'] = folder;
+    request.files.add(
+      await http.MultipartFile.fromPath('file', file.path),
+    );
+
+    try {
+      final streamed = await request.send().timeout(_uploadTimeout);
+      final response = await http.Response.fromStream(streamed);
+      final body = jsonDecode(response.body);
+
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw ApiException(
+          body is Map && body['message'] is String
+              ? body['message'] as String
+              : "L'image n'a pas pu être envoyée.",
+          statusCode: response.statusCode,
+        );
+      }
+
+      final data = (body as Map)['data'] as Map<String, dynamic>;
+      return data['url'] as String;
+    } on TimeoutException {
+      throw ApiException("L'envoi de l'image a expiré.");
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException("L'image n'a pas pu être envoyée.");
+    }
   }
 
   // ─── Favorites ───

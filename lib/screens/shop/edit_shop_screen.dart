@@ -149,9 +149,38 @@ class _EditShopScreenState extends State<EditShopScreen> {
         contactAddress: _themeConfig.contactAddress,
       );
 
+  /// Sends one picked image and returns the URL to store.
+  ///
+  /// Returns null when the upload failed, after showing why, so the save is
+  /// not attempted with a dead URL.
+  Future<String?> _upload(AppProvider provider, File? file) async {
+    if (file == null) return '';
+
+    final url = await provider.uploadImage(file, folder: 'shops');
+    if (url != null) return url;
+
+    if (!mounted) return null;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(provider.dataError ?? "L'image n'a pas pu être envoyée"),
+        backgroundColor: AppTheme.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+    return null;
+  }
+
   void _handleSave() async {
     final provider = context.read<AppProvider>();
     final phone = _whatsappController.text.trim();
+
+    // A newly picked image is sent first; leaving the fields empty keeps the
+    // URL the shop already has.
+    final logoUrl = await _upload(provider, _logoFile);
+    if (logoUrl == null) return;
+    final bannerUrl = await _upload(provider, _bannerFile);
+    if (bannerUrl == null) return;
 
     final success = await provider.updateShop(
       widget.shop.id,
@@ -162,6 +191,8 @@ class _EditShopScreenState extends State<EditShopScreen> {
           : 'https://wa.me/${phone.replaceAll(RegExp(r'[^0-9]'), '')}',
       theme: _selectedThemeId,
       themeConfig: _currentConfig,
+      logoUrl: logoUrl,
+      bannerUrl: bannerUrl,
     );
 
     if (!mounted) return;

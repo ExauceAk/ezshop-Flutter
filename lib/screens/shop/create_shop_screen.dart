@@ -109,6 +109,30 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
     );
   }
 
+  /// Sends one picked image and returns the URL to store, or null on failure
+  /// after showing why.
+  ///
+  /// An empty string is returned when no image was picked, so the caller can
+  /// pass the result straight to the API.
+  Future<String?> _upload(AppProvider provider, File? file,
+      {required String folder}) async {
+    if (file == null) return '';
+
+    final url = await provider.uploadImage(file, folder: folder);
+    if (url != null) return url;
+
+    if (!mounted) return null;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(provider.dataError ?? "L'image n'a pas pu être envoyée"),
+        backgroundColor: AppTheme.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+    return null;
+  }
+
   void _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -118,12 +142,19 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
         ? ''
         : 'https://wa.me/${phone.replaceAll(RegExp(r'[^0-9]'), '')}';
 
+    // Images must exist on the server before the shop references them, so
+    // they are sent first and their returned URLs stored on the shop.
+    final logoUrl = await _upload(provider, _logoFile, folder: 'shops');
+    if (logoUrl == null) return;
+    final bannerUrl = await _upload(provider, _bannerFile, folder: 'shops');
+    if (bannerUrl == null) return;
+
     final success = await provider.createShop(
       name: _nameController.text.trim(),
       description: _descController.text.trim(),
       whatsappLink: whatsappLink,
-      logoUrl: '',
-      bannerUrl: '',
+      logoUrl: logoUrl,
+      bannerUrl: bannerUrl,
       theme: _selectedThemeId,
       themeConfig: ShopThemeConfig(
         heroEyebrow: _heroEyebrowController.text.trim(),

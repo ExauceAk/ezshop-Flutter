@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../models/category_model.dart';
@@ -536,6 +538,22 @@ class AppProvider extends ChangeNotifier {
       _dataError = e.errors?.values.firstOrNull ?? e.message;
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Sends an image to the API and returns the public URL to store.
+  ///
+  /// Returns null on failure with [dataError] set, so a caller can report the
+  /// problem instead of silently saving a dead URL.
+  Future<String?> uploadImage(File file, {required String folder}) async {
+    try {
+      final url = await _api.uploadImage(file, folder: folder);
+      _dataError = null;
+      return url;
+    } on ApiException catch (e) {
+      _dataError = e.message;
+      notifyListeners();
+      return null;
     }
   }
 

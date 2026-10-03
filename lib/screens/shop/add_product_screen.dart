@@ -349,13 +349,35 @@ class _AddProductScreenState extends State<AddProductScreen> {
       }
 
       final provider = context.read<AppProvider>();
+
+      // The photo lives on the phone until it is uploaded, and only the
+      // returned URL can be stored on the product.
+      final imageUrl = await provider.uploadImage(
+        File(_selectedImages.first.path),
+        folder: 'products',
+      );
+      if (!mounted) return;
+
+      if (imageUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              provider.dataError ?? "La photo n'a pas pu être envoyée",
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+        return;
+      }
+
       final success = await provider.addProduct(
         shopId: widget.shopId,
         name: _nameController.text,
         description: _descController.text,
         price: double.parse(_priceController.text),
         isNeuf: _isNeuf,
-        imageUrl: _selectedImages.first.path,
+        imageUrl: imageUrl,
         categoryId: _selectedCategoryId,
       );
       if (!mounted) return;
