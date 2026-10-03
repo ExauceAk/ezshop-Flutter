@@ -33,20 +33,20 @@ class AppConfig {
 
   /// Address that opens a shop's storefront.
   ///
-  /// Always the shop's own subdomain: the address customers type, and the only
-  /// one the site answers on. `.localhost` resolves on the machine itself,
-  /// which is how the subdomain is exercised locally before the real domain
-  /// points at it.
+  /// The subdomain is put in front of the storefront host: `couz.localhost:3000`
+  /// on a desktop browser, `couz.10.122.244.88:3000` from a phone on the same
+  /// network, `couz.macketttz.test` once the domain is live. A shop only
+  /// answers on its own subdomain, never on a path.
   static String shopUrl(String subdomain) {
     if (subdomain.isEmpty) return webUrl;
-    final scheme = Uri.parse(webUrl).scheme;
-    final port = Uri.parse(webUrl).port;
-    return '$scheme://$subdomain.localhost:$port';
+    final uri = Uri.parse(webUrl);
+    final port = uri.hasPort ? ':${uri.port}' : '';
+    return '${uri.scheme}://$subdomain.${uri.host}$port';
   }
 
-  /// Pretty address displayed to the seller, e.g. `techzone.macketttz.test`.
+  /// Address shown to the seller, always the one that actually opens.
   static String shopDisplayUrl(String subdomain) {
     if (subdomain.isEmpty) return shopDomain;
-    return '$subdomain.$shopDomain';
+    return shopUrl(subdomain);
   }
 }
