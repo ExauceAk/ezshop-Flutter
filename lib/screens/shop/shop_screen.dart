@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
@@ -9,6 +10,8 @@ import '../../models/product_model.dart';
 import '../product/product_detail_screen.dart';
 import 'add_product_screen.dart';
 import 'create_shop_screen.dart';
+import 'edit_shop_screen.dart';
+import '../../config/app_config.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -31,7 +34,7 @@ class _ShopScreenState extends State<ShopScreen> {
 
             if (userShops.isEmpty) return _buildCreateShopView();
             if (_selectedShop != null) return _buildShopDetailView(_selectedShop!, provider);
-            return _buildShopListView(userShops);
+            return _buildShopListView(userShops, provider);
           },
         ),
       ),
@@ -101,7 +104,7 @@ class _ShopScreenState extends State<ShopScreen> {
   // ═══════════════════════════════════════
   //  SHOP LIST
   // ═══════════════════════════════════════
-  Widget _buildShopListView(List<Shop> shops) {
+  Widget _buildShopListView(List<Shop> shops, AppProvider provider) {
     return Column(
       children: [
         Padding(
@@ -125,7 +128,7 @@ class _ShopScreenState extends State<ShopScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             itemCount: shops.length,
             separatorBuilder: (_, __) => const SizedBox(height: 14),
-            itemBuilder: (context, index) => _buildShopCard(shops[index]),
+            itemBuilder: (context, index) => _buildShopCard(shops[index], provider),
           ),
         ),
         Container(
@@ -154,15 +157,11 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
-  Widget _buildShopCard(Shop shop) {
-    final templateColors = {
-      'default': AppTheme.primary,
-      'fashion': const Color(0xFFE85D75),
-      'beauty': const Color(0xFFF5A623),
-      'tech': const Color(0xFF4A90D9),
-    };
-    final accent = templateColors[shop.template] ?? AppTheme.primary;
-    final templateNames = {'default': 'Standard', 'fashion': 'Mode', 'beauty': 'Beauté', 'tech': 'Tech'};
+  Widget _buildShopCard(Shop shop, AppProvider provider) {
+    // Colours et noms viennent du catalogue de thèmes, plus d'une table en dur.
+    final accent = provider.themeColorOf(shop);
+    final theme = provider.themeOf(shop);
+    final themeLabel = theme?.name ?? shop.theme;
 
     return GestureDetector(
       onTap: () => setState(() => _selectedShop = shop),
@@ -223,7 +222,7 @@ class _ShopScreenState extends State<ShopScreen> {
                 children: [
                   _buildInfoChip(Icons.inventory_2_outlined, '${shop.productCount}', accent),
                   const SizedBox(width: 6),
-                  _buildInfoChip(Icons.palette_rounded, templateNames[shop.template] ?? 'Std', accent),
+                  _buildInfoChip(Icons.palette_rounded, themeLabel, accent),
                   const Spacer(),
                   Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 18),
                 ],
@@ -256,13 +255,8 @@ class _ShopScreenState extends State<ShopScreen> {
   // ═══════════════════════════════════════
   Widget _buildShopDetailView(Shop shop, AppProvider provider) {
     final shopProducts = provider.getProductsByShop(shop.id);
-    final templateColors = {
-      'default': AppTheme.primary,
-      'fashion': const Color(0xFFE85D75),
-      'beauty': const Color(0xFFF5A623),
-      'tech': const Color(0xFF4A90D9),
-    };
-    final accent = templateColors[shop.template] ?? AppTheme.primary;
+    final accent = provider.themeColorOf(shop);
+    final theme = provider.themeOf(shop);
 
     return Column(
       children: [
@@ -294,7 +288,7 @@ class _ShopScreenState extends State<ShopScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      shop.template.toUpperCase(),
+                      (theme?.name ?? shop.theme).toUpperCase(),
                       style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w800, color: accent),
                     ),
                     const SizedBox(width: 2),
@@ -303,25 +297,32 @@ class _ShopScreenState extends State<ShopScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              // Notification bell
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: AppTheme.background,
-                  borderRadius: BorderRadius.circular(12),
+              // Ouvre l'éditeur de boutique (thème, logo, textes)
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => EditShopScreen(shop: shop)),
                 ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const Icon(Icons.notifications_outlined, size: 22, color: AppTheme.textSecondary),
-                    Positioned(
-                      top: 8, right: 10,
-                      child: Container(
-                        width: 8, height: 8,
-                        decoration: const BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
-                      ),
-                    ),
-                  ],
+                child: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.tune_rounded, size: 20, color: accent),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Ouvre la boutique publique dans le navigateur
+              GestureDetector(
+                onTap: () => _openPublicShop(shop),
+                child: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.background,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.open_in_new_rounded, size: 20, color: AppTheme.textSecondary),
                 ),
               ),
             ],
@@ -409,7 +410,7 @@ class _ShopScreenState extends State<ShopScreen> {
                                       if (shop.subdomain.isNotEmpty)
                                         _buildDetailMetaChip(Icons.language_rounded, '${shop.subdomain}.mackettttz.test', 'Domaine de la boutique'),
                                       if (shop.subdomain.isNotEmpty) const SizedBox(width: 10),
-                                      _buildDetailMetaChip(Icons.palette_rounded, shop.template, 'Thème actif'),
+                                      _buildDetailMetaChip(Icons.palette_rounded, theme?.name ?? shop.theme, 'Thème actif'),
                                     ],
                                   ),
                                 ],
@@ -613,6 +614,12 @@ class _ShopScreenState extends State<ShopScreen> {
 
       ],
     );
+  }
+
+  // ─── Opens the shop's public page in the device browser ───
+  void _openPublicShop(Shop shop) {
+    final url = Uri.parse(AppConfig.shopUrl(shop.subdomain));
+    launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   // ─── Meta chip for detail banner (with subtitle) ───

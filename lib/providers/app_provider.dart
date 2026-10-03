@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../models/shop_model.dart';
+import '../models/shop_theme.dart';
+import '../models/shop_theme_config.dart';
 import '../models/user_model.dart';
 import '../models/order_model.dart';
 import '../models/category_model.dart';
 import '../services/mock_data.dart';
+import '../services/theme_service.dart';
 
 class AppProvider extends ChangeNotifier {
   // ─── Auth State ───
@@ -38,6 +41,67 @@ class AppProvider extends ChangeNotifier {
     _shops = List.from(MockData.shops);
     _categories = MockData.categories;
     _orders = _generateMockOrders();
+    loadThemes();
+  }
+
+  // ═══════════════════════════════════
+  // STOREFRONT THEMES
+  // ═══════════════════════════════════
+
+  final ThemeService _themeService = ThemeService();
+  List<ShopTheme> _themes = [];
+  bool _themesLoading = false;
+
+  /// The themes offered when creating or editing a shop.
+  List<ShopTheme> get themes => _themes;
+  bool get themesLoading => _themesLoading;
+
+  /// Theme used when the catalog cannot be fetched, so shop creation still
+  /// works without the storefront being reachable.
+  ShopTheme get fallbackTheme => _themes.isNotEmpty
+      ? _themes.first
+      : const ShopTheme(
+          id: 'atelier',
+          name: 'Atelier',
+          description: 'Serif et vert profond, très élégant',
+          previewImage: '',
+          swatch: ['#176b55', '#d6a85f', '#f7f5ef'],
+        );
+
+  /// Loads the catalog from the Next app. Safe to call more than once.
+  Future<void> loadThemes() async {
+    if (_themesLoading || _themes.isNotEmpty) return;
+    _themesLoading = true;
+    notifyListeners();
+
+    _themes = await _themeService.fetchThemes();
+    _themesLoading = false;
+    notifyListeners();
+  }
+
+  /// Accent colour of a shop, taken from its theme.
+  ///
+  /// Replaces the hardcoded per-template colour map that used to be duplicated
+  /// in several screens.
+  Color themeColorOf(Shop shop) {
+    for (final theme in _themes) {
+      if (theme.id == shop.theme) return theme.primaryColor;
+    }
+    return fallbackTheme.primaryColor;
+  }
+
+  /// The catalog entry of a shop's theme, for its name and description.
+  ShopTheme? themeOf(Shop shop) {
+    for (final theme in _themes) {
+      if (theme.id == shop.theme) return theme;
+    }
+    return null;
+  }
+
+  @override
+  void dispose() {
+    _themeService.dispose();
+    super.dispose();
   }
 
   // ═══════════════════════════════════
@@ -212,7 +276,10 @@ class AppProvider extends ChangeNotifier {
     required String name,
     required String description,
     String whatsappLink = '',
-    String template = 'default',
+    String logoUrl = '',
+    String bannerUrl = '',
+    String theme = 'atelier',
+    ShopThemeConfig themeConfig = const ShopThemeConfig(),
     String subdomain = '',
   }) {
     if (_currentUser == null || name.isEmpty) return false;
@@ -220,10 +287,13 @@ class AppProvider extends ChangeNotifier {
       id: 'shop_${DateTime.now().millisecondsSinceEpoch}',
       name: name,
       description: description,
+      logoUrl: logoUrl,
+      bannerUrl: bannerUrl,
       ownerId: _currentUser!.id,
       createdAt: DateTime.now(),
       whatsappLink: whatsappLink,
-      template: template,
+      theme: theme,
+      themeConfig: themeConfig,
       subdomain: subdomain,
     );
     _shops.add(shop);
@@ -231,6 +301,45 @@ class AppProvider extends ChangeNotifier {
     if (!_currentUser!.hasShop) {
       _currentUser = _currentUser!.copyWith(hasShop: true, shopId: shop.id);
     }
+    notifyListeners();
+    return true;
+  }
+
+  /// Applies an edit to an existing shop.
+  ///
+  /// Lets the seller change the theme, the logo and every storefront text
+  /// after the shop has been created.
+  ///
+  /// @returns false when the shop does not belong to the signed-in user.
+  bool updateShop(
+    String shopId, {
+    String? name,
+    String? description,
+    String? whatsappLink,
+    String? logoUrl,
+    String? bannerUrl,
+    String? theme,
+    ShopThemeConfig? themeConfig,
+    String? subdomain,
+  }) {
+    if (_currentUser == null) return false;
+
+    final index = _shops.indexWhere((s) => s.id == shopId);
+    if (index == -1) return false;
+
+    final shop = _shops[index];
+    if (shop.ownerId != _currentUser!.id) return false;
+
+    _shops[index] = shop.copyWith(
+      name: name,
+      description: description,
+      whatsappLink: whatsappLink,
+      logoUrl: logoUrl,
+      bannerUrl: bannerUrl,
+      theme: theme,
+      themeConfig: themeConfig,
+      subdomain: subdomain,
+    );
     notifyListeners();
     return true;
   }

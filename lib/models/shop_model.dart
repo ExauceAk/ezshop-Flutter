@@ -1,3 +1,5 @@
+import 'shop_theme_config.dart';
+
 class Shop {
   final String id;
   String name;
@@ -9,7 +11,15 @@ class Shop {
   int productCount;
   DateTime createdAt;
   String whatsappLink;
-  String template;
+
+  /// Id of the storefront theme, matching a key of the Next theme catalog.
+  /// See `next/lib/shop/themes.ts`.
+  String theme;
+
+  /// The seller's customisations layered on top of the theme defaults.
+  ShopThemeConfig themeConfig;
+
+  /// Slug of the public address, e.g. `techzone` for `techzone.macketttz.test`.
   String subdomain;
 
   Shop({
@@ -23,7 +33,8 @@ class Shop {
     this.productCount = 0,
     required this.createdAt,
     this.whatsappLink = '',
-    this.template = 'default',
+    this.theme = 'atelier',
+    this.themeConfig = const ShopThemeConfig(),
     this.subdomain = '',
   });
 
@@ -35,7 +46,8 @@ class Shop {
     double? rating,
     int? productCount,
     String? whatsappLink,
-    String? template,
+    String? theme,
+    ShopThemeConfig? themeConfig,
     String? subdomain,
   }) {
     return Shop(
@@ -49,7 +61,8 @@ class Shop {
       productCount: productCount ?? this.productCount,
       createdAt: createdAt,
       whatsappLink: whatsappLink ?? this.whatsappLink,
-      template: template ?? this.template,
+      theme: theme ?? this.theme,
+      themeConfig: themeConfig ?? this.themeConfig,
       subdomain: subdomain ?? this.subdomain,
     );
   }
