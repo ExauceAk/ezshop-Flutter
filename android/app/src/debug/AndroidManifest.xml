@@ -4,4 +4,9 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Development servers are plain HTTP, which Android blocks by default
+         (API 28+). Enabled for debug only so release builds keep requiring
+         HTTPS; production must be served over TLS.
+    -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

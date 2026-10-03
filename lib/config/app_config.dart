@@ -28,11 +28,21 @@ class AppConfig {
     defaultValue: 'macketttz.test',
   );
 
-  /// Public address of a shop, e.g. `https://techzone.macketttz.test`.
+  /// Address that actually opens a shop's storefront.
+  ///
+  /// The pretty `<subdomain>.<domain>` form only resolves when DNS points at
+  /// this server, so it is only shown as text. Opening the shop uses the
+  /// `/shop/<subdomain>` path instead: it reaches the same page from the app
+  /// and from a phone, where the host is a bare IP and no subdomain can be
+  /// derived from it.
   static String shopUrl(String subdomain) {
     if (subdomain.isEmpty) return webUrl;
-    // A real subdomain resolves straight to the storefront on every platform,
-    // so it is preferred over the /shop/<subdomain> path.
-    return '$webUrl/$subdomain';
+    return '$webUrl/shop/$subdomain';
+  }
+
+  /// Pretty address displayed to the seller, e.g. `techzone.macketttz.test`.
+  static String shopDisplayUrl(String subdomain) {
+    if (subdomain.isEmpty) return shopDomain;
+    return '$subdomain.$shopDomain';
   }
 }
