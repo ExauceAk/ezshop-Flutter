@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../models/product_model.dart';
 import '../../models/shop_model.dart';
 import '../../utils/price_format.dart';
+import '../../widgets/top_fade.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -144,6 +145,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       ),
                     ),
+                  // The picture runs under the status bar: fading it towards white keeps
+                  // the clock and the battery readable over it.
+                  const Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: TopFade(),
+                  ),
                   // Condition badge
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 60,
@@ -327,37 +336,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 /// is the one that flies into place.
 String _heroTag(int index) => 'product-image-${widget.product.id}-$index';
 
-/// Fullscreen viewer: pinch to zoom, double tap, swipe between images.
-void _openGallery() {
-  final images = widget.product.images.where((url) => url.isNotEmpty).toList();
-  if (images.isEmpty) return;
+/// Opens the fullscreen viewer: pinch to zoom, swipe between images.
+  void _openGallery() {
+    final images = widget.product.images.where((url) => url.isNotEmpty).toList();
+    if (images.isEmpty) return;
 
-  Navigator.of(context).push(
-    PageRouteBuilder(
-      opaque: false,
-      barrierColor: Colors.black,
-      pageBuilder: (_, animation, __) => PhotoViewGallery.builder(
-        pageController: PageController(initialPage: _currentImageIndex),
-        itemCount: images.length,
-        onPageChanged: (index) => setState(() => _currentImageIndex = index),
-        backgroundDecoration: const BoxDecoration(color: Colors.black),
-        loadingBuilder: (_, event) => const Center(
-          child: CircularProgressIndicator(color: Colors.white),
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black,
+        pageBuilder: (_, animation, __) => _ProductGallery(
+          images: images,
+          initialIndex: _currentImageIndex,
+          heroTagFor: _heroTag,
         ),
-        builder: (context, index) => PhotoViewGalleryPageOptions(
-          imageProvider: NetworkImage(images[index]),
-          heroAttributes: PhotoViewHeroAttributes(tag: _heroTag(index)),
-          minScale: PhotoViewComputedScale.contained,
-          maxScale: PhotoViewComputedScale.covered * 3,
-        ),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
       ),
-      transitionsBuilder: (_, animation, __, child) =>
-          FadeTransition(opacity: animation, child: child),
-    ),
-  );
-}
+    );
+  }
 
-/// Shop logo, falling back to the storefront icon.
+  /// Shop logo, falling back to the storefront icon.
 Widget _buildShopLogo(Shop? shop) {
   final logoUrl = shop?.logoUrl ?? '';
 
@@ -427,4 +426,103 @@ void _showNoWhatsApp() {
     ),
   );
 }
+}
+
+/// Fullscreen image viewer opened from the carousel.
+///
+/// The white veil under the status bar only stays while the picture is at rest:
+/// zooming fades it away so it does not sit on top of what is being looked at.
+class _ProductGallery extends StatefulWidget {
+  const _ProductGallery({
+    required this.images,
+    required this.initialIndex,
+    required this.heroTagFor,
+  });
+
+  final List<String> images;
+  final int initialIndex;
+  final String Function(int index) heroTagFor;
+
+  @override
+  State<_ProductGallery> createState() => _ProductGalleryState();
+}
+
+class _ProductGalleryState extends State<_ProductGallery> {
+  late final PageController _pageController = PageController(initialPage: widget.initialIndex);
+  late int _index = widget.initialIndex;
+  bool _zoomed = false;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        PhotoViewGallery.builder(
+          pageController: _pageController,
+          itemCount: widget.images.length,
+          onPageChanged: (index) => setState(() => _index = index),
+          backgroundDecoration: const BoxDecoration(color: Colors.black),
+          scaleStateChangedCallback: (state) {
+            final zoomed = state != PhotoViewScaleState.initial;
+            if (zoomed != _zoomed) setState(() => _zoomed = zoomed);
+          },
+          loadingBuilder: (_, event) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+          builder: (context, index) => PhotoViewGalleryPageOptions(
+            imageProvider: NetworkImage(widget.images[index]),
+            heroAttributes: PhotoViewHeroAttributes(tag: widget.heroTagFor(index)),
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 3,
+          ),
+        ),
+
+        // A fullscreen tap-to-close overlay would swallow the pinch and the swipe,
+        // so the viewer is closed with a button instead.
+        Positioned(
+          top: MediaQuery.paddingOf(context).top + 6,
+          left: 12,
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).maybePop(),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.35), shape: BoxShape.circle),
+              child: const Icon(Icons.close_rounded, size: 20, color: Colors.white),
+            ),
+          ),
+        ),
+
+        Positioned(
+          top: 0, left: 0, right: 0,
+          child: AnimatedOpacity(
+            opacity: _zoomed ? 0 : 1,
+            duration: const Duration(milliseconds: 180),
+            child: const TopFade(),
+          ),
+        ),
+
+        if (widget.images.length > 1)
+          Positioned(
+            bottom: 28,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(widget.images.length, (index) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: _index == index ? 22 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _index == index ? Colors.white : Colors.white.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              )),
+            ),
+          ),
+      ],
+    );
+  }
 }

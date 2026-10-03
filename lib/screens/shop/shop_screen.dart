@@ -13,6 +13,7 @@ import 'create_shop_screen.dart';
 import 'edit_shop_screen.dart';
 import 'shop_webview_screen.dart';
 import '../../config/app_config.dart';
+import '../../widgets/top_fade.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -117,6 +118,7 @@ class _ShopScreenState extends State<ShopScreen> {
           width: double.infinity,
           child: _buildVioletBackdrop(
             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+            fadeTop: true,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 20, 20),
               child: Row(
@@ -271,6 +273,7 @@ class _ShopScreenState extends State<ShopScreen> {
     required Widget child,
     BorderRadius borderRadius = BorderRadius.zero,
     String? imageUrl,
+    bool fadeTop = false,
   }) {
     final backdrop = imageUrl != null && imageUrl.isNotEmpty
         ? Image.network(
@@ -311,6 +314,10 @@ class _ShopScreenState extends State<ShopScreen> {
               ),
             ),
           ),
+          // L'image touche le bord supérieur de l'écran : on l'estompe vers le
+          // blanc sous la barre d'état pour garder l'heure lisible.
+          if (fadeTop)
+            const Positioned(top: 0, left: 0, right: 0, child: TopFade()),
           child,
         ],
       ),
