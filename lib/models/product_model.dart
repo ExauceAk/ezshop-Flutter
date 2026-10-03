@@ -69,6 +69,33 @@ class Product {
     );
   }
 
+  /// Reads a decimal the API sends as a string ("1499.99") or a number.
+  static double _readDouble(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toDouble();
+    return double.tryParse('$value') ?? 0;
+  }
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    // The seller name is denormalised on the product response, so the shop can
+    // be displayed without a second fetch.
+    final shop = json['shop'];
+
+    return Product(
+      id: '${json['id']}',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      price: _readDouble(json['price']),
+      oldPrice: json['oldPrice'] == null ? null : _readDouble(json['oldPrice']),
+      imageUrl: json['imageUrl']?.toString() ?? '',
+      imageUrls: (json['imageUrls'] as List?)?.map((e) => '$e').toList() ?? const [],
+      categoryId: json['categoryId']?.toString() ?? '',
+      shopId: json['shopId']?.toString() ?? '',
+      sellerName: shop is Map ? shop['name']?.toString() ?? '' : (json['sellerName']?.toString() ?? ''),
+      isNeuf: json['isNeuf'] != false,
+    );
+  }
+
   double get discountPercent {
     if (oldPrice != null && oldPrice! > price) {
       return ((oldPrice! - price) / oldPrice! * 100).roundToDouble();

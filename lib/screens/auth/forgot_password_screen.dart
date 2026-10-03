@@ -21,9 +21,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  void _handleReset() {
+  void _handleReset() async {
     final provider = context.read<AppProvider>();
-    final success = provider.forgotPassword(_emailController.text);
+    final success = await provider.forgotPassword(_emailController.text);
+    if (!mounted) return;
     if (success) {
       setState(() => _sent = true);
     } else {

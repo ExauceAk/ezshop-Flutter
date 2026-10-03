@@ -116,7 +116,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
     );
   }
 
-  void _handleSubmit() {
+  void _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
     final provider = context.read<AppProvider>();
@@ -125,7 +125,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
         ? ''
         : 'https://wa.me/${phone.replaceAll(RegExp(r'[^0-9]'), '')}';
 
-    final success = provider.createShop(
+    final success = await provider.createShop(
       name: _nameController.text.trim(),
       description: _descController.text.trim(),
       whatsappLink: whatsappLink,
@@ -145,7 +145,19 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
       subdomain: _subdomainController.text.trim(),
     );
 
-    if (!success) return;
+    if (!mounted) return;
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.dataError ?? 'Impossible de créer la boutique'),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

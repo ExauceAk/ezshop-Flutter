@@ -14,6 +14,22 @@ class OrderItem {
   });
 
   double get total => productPrice * quantity;
+
+  static double readAmount(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toDouble();
+    return double.tryParse('$value') ?? 0;
+  }
+
+  factory OrderItem.fromJson(Map<String, dynamic> json) {
+    return OrderItem(
+      productId: '${json['productId']}',
+      productName: json['productName']?.toString() ?? '',
+      productPrice: readAmount(json['productPrice']),
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      imageUrl: json['imageUrl']?.toString() ?? '',
+    );
+  }
 }
 
 class Order {
@@ -30,4 +46,20 @@ class Order {
     required this.date,
     this.status = 'pending',
   });
+
+  factory Order.fromJson(Map<String, dynamic> json) {
+    return Order(
+      id: '${json['id']}',
+      items: (json['items'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(OrderItem.fromJson)
+              .toList() ??
+          const [],
+      totalAmount: OrderItem.readAmount(json['totalAmount']),
+      // The order payload exposes no creation date, only the last update, so
+      // that stands in for it.
+      date: DateTime.tryParse('${json['createdAt'] ?? json['updatedAt']}') ?? DateTime.now(),
+      status: json['status']?.toString() ?? 'pending',
+    );
+  }
 }

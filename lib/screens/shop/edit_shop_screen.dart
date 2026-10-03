@@ -151,11 +151,11 @@ class _EditShopScreenState extends State<EditShopScreen> {
         contactAddress: _themeConfig.contactAddress,
       );
 
-  void _handleSave() {
+  void _handleSave() async {
     final provider = context.read<AppProvider>();
     final phone = _whatsappController.text.trim();
 
-    final success = provider.updateShop(
+    final success = await provider.updateShop(
       widget.shop.id,
       name: _nameController.text.trim(),
       description: _descController.text.trim(),
@@ -166,9 +166,16 @@ class _EditShopScreenState extends State<EditShopScreen> {
       themeConfig: _currentConfig,
     );
 
+    if (!mounted) return;
+
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Impossible de modifier cette boutique')),
+        SnackBar(
+          content: Text(provider.dataError ?? 'Impossible de modifier cette boutique'),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
       return;
     }

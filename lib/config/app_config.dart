@@ -4,16 +4,19 @@
 /// without touching the source:
 ///
 /// ```sh
-/// flutter run --dart-define=API_URL=https://api.macketttz.test \
-///              --dart-define=WEB_URL=https://macketttz.test
+/// flutter run --dart-define=API_URL=http://10.0.0.5:4024/api/v1 \
+///              --dart-define=WEB_URL=http://10.0.0.5:3000
 /// ```
+///
+/// [apiUrl] must include the `/api/v1` prefix, which the Nest app sets as its
+/// global route prefix; every path built on top is relative to it.
 class AppConfig {
   AppConfig._();
 
-  /// Nest API, used for the theme catalog.
+  /// Nest API: auth, shops, products, orders, cart and favorites.
   static const String apiUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'http://localhost:4024',
+    defaultValue: 'http://localhost:4024/api/v1',
   );
 
   /// Next storefront, used for theme previews and public shop pages.

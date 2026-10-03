@@ -47,4 +47,16 @@ class UserModel {
       cartItems: cartItems ?? this.cartItems,
     );
   }
+
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      id: '${json['id']}',
+      // The API names the display field "username"; the app calls it "name".
+      name: json['username']?.toString() ?? json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      avatarUrl: json['avatarUrl']?.toString() ?? '',
+    );
+  }
 }

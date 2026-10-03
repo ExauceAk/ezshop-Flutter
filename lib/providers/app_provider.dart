@@ -1,16 +1,33 @@
 import 'package:flutter/material.dart';
+
+import '../models/category_model.dart';
+import '../models/order_model.dart';
 import '../models/product_model.dart';
 import '../models/shop_model.dart';
 import '../models/shop_theme.dart';
 import '../models/shop_theme_config.dart';
 import '../models/user_model.dart';
-import '../models/order_model.dart';
-import '../models/category_model.dart';
-import '../services/mock_data.dart';
+import '../services/api_client.dart';
+import '../services/market_api.dart';
 import '../services/theme_service.dart';
 
+/// Single source of truth for the app, backed entirely by the Nest API.
+///
+/// Every method that touches the network is asynchronous: the UI awaits it and
+/// shows a spinner or an error, because the previous in-memory behaviour (a
+/// synchronous `bool` that always succeeded) hid failures.
 class AppProvider extends ChangeNotifier {
-  // ─── Auth State ───
+  AppProvider({ApiClient? client})
+      : _client = client ?? ApiClient() {
+    _api = MarketApi(_client);
+  }
+
+  final ApiClient _client;
+  late final MarketApi _api;
+  final ThemeService _themeService = ThemeService();
+
+  // ─── Session ───
+
   UserModel? _currentUser;
   bool _isLoggedIn = false;
   String? _authError;
@@ -19,14 +36,28 @@ class AppProvider extends ChangeNotifier {
   bool get isLoggedIn => _isLoggedIn;
   String? get authError => _authError;
 
+  // ─── Loading state ───
+
+  bool _booting = true;
+  bool _loading = false;
+  String? _dataError;
+
+  /// True until the saved session and the first catalog load have settled.
+  /// Screens use it to hold back a spinner instead of flashing empty data.
+  bool get booting => _booting;
+
+  bool get loading => _loading;
+  String? get dataError => _dataError;
+
   // ─── Data ───
+
   List<Product> _products = [];
   List<Shop> _shops = [];
   List<Category> _categories = [];
   List<Order> _orders = [];
   String _searchQuery = '';
   String _selectedCategory = '';
-  bool? _filterNeuf; // null = tous, true = neuf, false = occasion
+  bool? _filterNeuf;
 
   List<Product> get products => _products;
   List<Shop> get shops => _shops;
@@ -36,19 +67,95 @@ class AppProvider extends ChangeNotifier {
   String get selectedCategory => _selectedCategory;
   bool? get filterNeuf => _filterNeuf;
 
-  AppProvider() {
-    _products = List.from(MockData.products);
-    _shops = List.from(MockData.shops);
-    _categories = MockData.categories;
-    _orders = _generateMockOrders();
-    loadThemes();
+  // ═══════════════════════════════════
+  // BOOTSTRAP
+  // ═══════════════════════════════════
+
+  /// Restores a saved session, then loads the catalog.
+  ///
+  /// Safe to call once at startup. A restored session that the API rejects is
+  /// discarded rather than surfaced as an error: the user simply lands on the
+  /// login screen.
+  Future<void> initialize() async {
+    _booting = true;
+    notifyListeners();
+
+    await _client.restoreSession();
+
+    if (_client.hasSession) {
+      try {
+        _currentUser = await _api.me();
+        _isLoggedIn = true;
+      } on ApiException {
+        await _client.clearSession();
+        _currentUser = null;
+        _isLoggedIn = false;
+      }
+    }
+
+    await _loadCatalog();
+    await loadThemes();
+
+    _booting = false;
+    notifyListeners();
+  }
+
+  /// Loads everything the browsing screens need.
+  ///
+  /// Each call is independent: a failing orders endpoint must not empty the
+  /// product list.
+  Future<void> refresh() async {
+    _loading = true;
+    _dataError = null;
+    notifyListeners();
+
+    await _loadCatalog();
+
+    _loading = false;
+    notifyListeners();
+  }
+
+  Future<void> _loadCatalog() async {
+    final errors = <String>[];
+
+    Future<void> load(Future<void> Function() task) async {
+      try {
+        await task();
+      } on ApiException catch (e) {
+        errors.add(e.message);
+      }
+    }
+
+    await Future.wait([
+      load(() async => _categories = await _api.categories()),
+      load(() async => _shops = await _api.shops()),
+      load(() async {
+        _products = await _api.products();
+        // Favorites live in their own table, so the flag has to be re-applied
+        // on top of the freshly fetched products.
+        await _applyFavorites();
+      }),
+    ]);
+
+    _dataError = errors.isEmpty ? null : errors.first;
+  }
+
+  Future<void> _applyFavorites() async {
+    try {
+      final favorites = await _api.favorites();
+      final ids = favorites.map((p) => p.id).toSet();
+      for (final product in _products) {
+        product.isFavorite = ids.contains(product.id);
+      }
+    } on ApiException {
+      // A missing favorite list only means the star stays empty.
+    }
   }
 
   // ═══════════════════════════════════
   // STOREFRONT THEMES
   // ═══════════════════════════════════
 
-  final ThemeService _themeService = ThemeService();
   List<ShopTheme> _themes = [];
   bool _themesLoading = false;
 
@@ -80,9 +187,6 @@ class AppProvider extends ChangeNotifier {
   }
 
   /// Accent colour of a shop, taken from its theme.
-  ///
-  /// Replaces the hardcoded per-template colour map that used to be duplicated
-  /// in several screens.
   Color themeColorOf(Shop shop) {
     for (final theme in _themes) {
       if (theme.id == shop.theme) return theme.primaryColor;
@@ -101,78 +205,97 @@ class AppProvider extends ChangeNotifier {
   @override
   void dispose() {
     _themeService.dispose();
+    _client.dispose();
     super.dispose();
   }
 
   // ═══════════════════════════════════
-  // AUTH METHODS
+  // AUTH
   // ═══════════════════════════════════
 
-  bool login(String email, String password) {
+  /// Signs in against the API.
+  ///
+  /// @returns true on success, false with [authError] set otherwise.
+  Future<bool> login(String email, String password) async {
     _authError = null;
-    if (email.isEmpty || password.isEmpty) {
-      _authError = 'Veuillez remplir tous les champs';
-      notifyListeners();
-      return false;
-    }
-    if (password.length < 6) {
-      _authError = 'Le mot de passe doit contenir au moins 6 caractères';
-      notifyListeners();
-      return false;
-    }
-    _currentUser = MockData.users.first;
-    _isLoggedIn = true;
     notifyListeners();
-    return true;
+
+    try {
+      final session = await _api.login(email, password);
+      await _persistSession(session);
+      _currentUser = session.user;
+      _isLoggedIn = true;
+      notifyListeners();
+      await _afterLogin();
+      return true;
+    } on ApiException catch (e) {
+      _authError = e.message;
+      notifyListeners();
+      return false;
+    }
   }
 
-  bool signup(String name, String email, String password, String confirmPassword) {
+  Future<bool> signup(
+    String name,
+    String email,
+    String password,
+    String confirmPassword,
+  ) async {
     _authError = null;
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      _authError = 'Veuillez remplir tous les champs';
-      notifyListeners();
-      return false;
-    }
-    if (!email.contains('@')) {
-      _authError = 'Email invalide';
-      notifyListeners();
-      return false;
-    }
-    if (password.length < 6) {
-      _authError = 'Le mot de passe doit contenir au moins 6 caractères';
-      notifyListeners();
-      return false;
-    }
+    notifyListeners();
+
     if (password != confirmPassword) {
       _authError = 'Les mots de passe ne correspondent pas';
       notifyListeners();
       return false;
     }
-    _currentUser = UserModel(
-      id: 'user_${DateTime.now().millisecondsSinceEpoch}',
-      name: name,
-      email: email,
-    );
-    _isLoggedIn = true;
-    notifyListeners();
-    return true;
-  }
 
-  bool forgotPassword(String email) {
-    _authError = null;
-    if (email.isEmpty || !email.contains('@')) {
-      _authError = 'Email invalide';
+    try {
+      final session = await _api.register(
+        name: name,
+        email: email,
+        password: password,
+        confirmPassword: confirmPassword,
+      );
+      await _persistSession(session);
+      _currentUser = session.user;
+      _isLoggedIn = true;
+      notifyListeners();
+      await _afterLogin();
+      return true;
+    } on ApiException catch (e) {
+      _authError = e.errors?.values.firstOrNull ?? e.message;
       notifyListeners();
       return false;
     }
-    notifyListeners();
-    return true;
   }
 
-  void logout() {
+  /// Requests a password reset email.
+  ///
+  /// The API deliberately answers the same way for unknown addresses, so a
+  /// success here never confirms the account exists.
+  Future<bool> forgotPassword(String email) async {
+    _authError = null;
+    notifyListeners();
+
+    try {
+      await _api.requestPasswordReset(email);
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _authError = e.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> logout() async {
+    await _client.clearSession();
     _currentUser = null;
     _isLoggedIn = false;
     _authError = null;
+    _products = [];
+    _orders = [];
     notifyListeners();
   }
 
@@ -181,14 +304,36 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Hands the token pair to the client so it can refresh silently later.
+  Future<void> _persistSession(AuthSession session) {
+    return _client.adoptSession(session.accessToken, session.refreshToken);
+  }
+
+  /// Loads what the signed-in screens need, once a session exists.
+  Future<void> _afterLogin() async {
+    await _loadCatalog();
+    await loadOrders();
+    notifyListeners();
+  }
+
   // ═══════════════════════════════════
-  // USER PROFILE
+  // PROFILE
   // ═══════════════════════════════════
 
-  void updateProfile({String? name, String? phone, String? address}) {
-    if (_currentUser == null) return;
-    _currentUser = _currentUser!.copyWith(name: name, phone: phone, address: address);
-    notifyListeners();
+  Future<bool> updateProfile({String? name, String? phone, String? address}) async {
+    try {
+      _currentUser = await _api.updateProfile(
+        name: name,
+        phone: phone,
+        address: address,
+      );
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _dataError = e.message;
+      notifyListeners();
+      return false;
+    }
   }
 
   // ═══════════════════════════════════
@@ -205,8 +350,8 @@ class AppProvider extends ChangeNotifier {
     }
     if (_searchQuery.isNotEmpty) {
       result = result.where((p) =>
-        p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-        p.description.toLowerCase().contains(_searchQuery.toLowerCase())
+          p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          p.description.toLowerCase().contains(_searchQuery.toLowerCase())
       ).toList();
     }
     return result;
@@ -236,11 +381,10 @@ class AppProvider extends ChangeNotifier {
   }
 
   Shop? getShopById(String shopId) {
-    try {
-      return _shops.firstWhere((s) => s.id == shopId);
-    } catch (_) {
-      return null;
+    for (final shop in _shops) {
+      if (shop.id == shopId) return shop;
     }
+    return null;
   }
 
   List<Shop> getUserShops() {
@@ -252,10 +396,28 @@ class AppProvider extends ChangeNotifier {
   // FAVORITES
   // ═══════════════════════════════════
 
-  void toggleFavorite(String productId) {
+  /// Flips the favorite flag of a product and persists it.
+  ///
+  /// The local flag flips first so the star reacts instantly; a failure rolls
+  /// it back.
+  Future<void> toggleFavorite(String productId) async {
     final index = _products.indexWhere((p) => p.id == productId);
-    if (index != -1) {
-      _products[index].isFavorite = !_products[index].isFavorite;
+    if (index == -1) return;
+
+    final product = _products[index];
+    final wasFavorite = product.isFavorite;
+    product.isFavorite = !wasFavorite;
+    notifyListeners();
+
+    try {
+      if (wasFavorite) {
+        await _api.removeFavorite(productId);
+      } else {
+        await _api.addFavorite(productId);
+      }
+    } on ApiException catch (e) {
+      product.isFavorite = wasFavorite;
+      _dataError = e.message;
       notifyListeners();
     }
   }
@@ -265,53 +427,71 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ═══════════════════════════════════
-  // ORDERS (kept for history, no cart)
+  // ORDERS
   // ═══════════════════════════════════
+
+  /// Loads the orders the user placed, plus the ones they received as a seller.
+  Future<void> loadOrders() async {
+    try {
+      _orders = await _api.orders();
+      notifyListeners();
+    } on ApiException catch (e) {
+      _dataError = e.message;
+      notifyListeners();
+    }
+  }
 
   // ═══════════════════════════════════
   // SHOP MANAGEMENT
   // ═══════════════════════════════════
 
-  bool createShop({
+  /// Creates a shop on the API and adds it to the list.
+  ///
+  /// @returns false with [dataError] set when the API refuses, most often
+  /// because the subdomain is already taken.
+  Future<bool> createShop({
     required String name,
     required String description,
     String whatsappLink = '',
     String logoUrl = '',
     String bannerUrl = '',
-    String theme = 'atelier',
+    required String theme,
     ShopThemeConfig themeConfig = const ShopThemeConfig(),
     String subdomain = '',
-  }) {
-    if (_currentUser == null || name.isEmpty) return false;
-    final shop = Shop(
-      id: 'shop_${DateTime.now().millisecondsSinceEpoch}',
-      name: name,
-      description: description,
-      logoUrl: logoUrl,
-      bannerUrl: bannerUrl,
-      ownerId: _currentUser!.id,
-      createdAt: DateTime.now(),
-      whatsappLink: whatsappLink,
-      theme: theme,
-      themeConfig: themeConfig,
-      subdomain: subdomain,
-    );
-    _shops.add(shop);
-    // Support multiple shops: set first shop as default
-    if (!_currentUser!.hasShop) {
-      _currentUser = _currentUser!.copyWith(hasShop: true, shopId: shop.id);
+  }) async {
+    try {
+      final shop = await _api.createShop(
+        name: name,
+        description: description,
+        whatsappLink: whatsappLink,
+        logoUrl: logoUrl,
+        bannerUrl: bannerUrl,
+        theme: theme,
+        themeConfig: themeConfig.toJson(),
+        subdomain: subdomain,
+      );
+
+      _shops = [..._shops, shop];
+
+      if (_currentUser != null && !_currentUser!.hasShop) {
+        _currentUser = _currentUser!.copyWith(hasShop: true, shopId: shop.id);
+      }
+
+      _dataError = null;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _dataError = e.errors?.values.firstOrNull ?? e.message;
+      notifyListeners();
+      return false;
     }
-    notifyListeners();
-    return true;
   }
 
-  /// Applies an edit to an existing shop.
+  /// Applies an edit to an existing shop on the API.
   ///
   /// Lets the seller change the theme, the logo and every storefront text
   /// after the shop has been created.
-  ///
-  /// @returns false when the shop does not belong to the signed-in user.
-  bool updateShop(
+  Future<bool> updateShop(
     String shopId, {
     String? name,
     String? description,
@@ -321,30 +501,37 @@ class AppProvider extends ChangeNotifier {
     String? theme,
     ShopThemeConfig? themeConfig,
     String? subdomain,
-  }) {
-    if (_currentUser == null) return false;
+  }) async {
+    try {
+      final updated = await _api.updateShop(
+        shopId,
+        name: name,
+        description: description,
+        whatsappLink: whatsappLink,
+        logoUrl: logoUrl,
+        bannerUrl: bannerUrl,
+        theme: theme,
+        themeConfig: themeConfig?.toJson(),
+        subdomain: subdomain,
+      );
 
-    final index = _shops.indexWhere((s) => s.id == shopId);
-    if (index == -1) return false;
+      final index = _shops.indexWhere((s) => s.id == shopId);
+      if (index != -1) {
+        _shops[index] = updated;
+      }
 
-    final shop = _shops[index];
-    if (shop.ownerId != _currentUser!.id) return false;
-
-    _shops[index] = shop.copyWith(
-      name: name,
-      description: description,
-      whatsappLink: whatsappLink,
-      logoUrl: logoUrl,
-      bannerUrl: bannerUrl,
-      theme: theme,
-      themeConfig: themeConfig,
-      subdomain: subdomain,
-    );
-    notifyListeners();
-    return true;
+      _dataError = null;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _dataError = e.errors?.values.firstOrNull ?? e.message;
+      notifyListeners();
+      return false;
+    }
   }
 
-  bool addProduct({
+  /// Adds a product to a shop on the API.
+  Future<bool> addProduct({
     required String name,
     required String description,
     required double price,
@@ -352,54 +539,49 @@ class AppProvider extends ChangeNotifier {
     bool isNeuf = true,
     String? shopId,
     String? categoryId,
-  }) {
-    final targetShopId = shopId ?? _currentUser?.shopId;
-    if (_currentUser == null || targetShopId == null) return false;
-    final shop = getShopById(targetShopId);
-    if (shop == null) return false;
+  }) async {
+    if (_currentUser == null) return false;
 
-    final product = Product(
-      id: 'prod_${DateTime.now().millisecondsSinceEpoch}',
-      name: name,
-      description: description,
-      price: price,
-      imageUrl: imageUrl,
-      categoryId: categoryId ?? '',
-      shopId: shop.id,
-      sellerName: shop.name,
-      isNeuf: isNeuf,
-    );
-    _products.insert(0, product);
-    shop.productCount++;
-    notifyListeners();
-    return true;
+    final targetShopId = shopId ?? _currentUser!.shopId ?? (_userShops().firstOrNull?.id);
+    if (targetShopId == null || categoryId == null || categoryId.isEmpty) {
+      _dataError = 'Choisissez une catégorie et une boutique.';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      final product = await _api.createProduct(
+        name: name,
+        description: description,
+        price: price,
+        imageUrl: imageUrl,
+        categoryId: categoryId,
+        shopId: targetShopId,
+        isNeuf: isNeuf,
+      );
+
+      _products = [product, ..._products];
+
+      final shop = getShopById(targetShopId);
+      if (shop != null) {
+        final index = _shops.indexWhere((s) => s.id == targetShopId);
+        _shops[index] = shop.copyWith(productCount: shop.productCount + 1);
+      }
+
+      _dataError = null;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _dataError = e.errors?.values.firstOrNull ?? e.message;
+      notifyListeners();
+      return false;
+    }
   }
 
-  // ═══════════════════════════════════
-  // HELPERS
-  // ═══════════════════════════════════
+  List<Shop> _userShops() => getUserShops();
 
-  List<Order> _generateMockOrders() {
-    return [
-      Order(
-        id: 'ord1',
-        items: [
-          OrderItem(productId: 'prod1', productName: 'iPhone 15 Pro Max', productPrice: 1199.99, quantity: 1, imageUrl: 'https://picsum.photos/400/400?random=1'),
-        ],
-        totalAmount: 1199.99,
-        date: DateTime.now().subtract(const Duration(days: 3)),
-        status: 'delivered',
-      ),
-      Order(
-        id: 'ord2',
-        items: [
-          OrderItem(productId: 'prod3', productName: "Robe d'été florale", productPrice: 49.99, quantity: 2, imageUrl: 'https://picsum.photos/400/400?random=3'),
-          OrderItem(productId: 'prod5', productName: 'Sérum Vitamine C', productPrice: 29.99, quantity: 1, imageUrl: 'https://picsum.photos/400/400?random=5'),
-        ],
-        totalAmount: 129.97,
-        date: DateTime.now().subtract(const Duration(days: 7)),
-        status: 'shipped',
-      ),
-    ];
+  void clearDataError() {
+    _dataError = null;
+    notifyListeners();
   }
 }

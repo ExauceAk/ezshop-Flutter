@@ -23,18 +23,70 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => AppProvider(),
+      // Restores the saved session and loads the catalog before the first
+      // screen is shown, so no screen has to render empty-then-filled.
+      create: (_) => AppProvider()..initialize(),
       child: MaterialApp(
         title: 'MarketPlace',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        initialRoute: '/login',
+        home: const _RootRouter(),
         routes: {
           '/login': (_) => const LoginScreen(),
           '/signup': (_) => const SignupScreen(),
           '/forgot-password': (_) => const ForgotPasswordScreen(),
           '/home': (_) => const MainScaffold(),
         },
+      ),
+    );
+  }
+}
+
+/// Decides the landing screen once the session is known.
+///
+/// Kept separate from the login screen's own navigation so a saved session
+/// lands straight on the marketplace instead of flashing the login form.
+class _RootRouter extends StatelessWidget {
+  const _RootRouter();
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+
+    if (provider.booting) return const _SplashScreen();
+
+    return provider.isLoggedIn ? const MainScaffold() : const LoginScreen();
+  }
+}
+
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 40),
+            ),
+            const SizedBox(height: 32),
+            const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ],
+        ),
       ),
     );
   }

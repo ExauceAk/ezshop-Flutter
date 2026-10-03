@@ -66,4 +66,25 @@ class Shop {
       subdomain: subdomain ?? this.subdomain,
     );
   }
+
+  factory Shop.fromJson(Map<String, dynamic> json) {
+    return Shop(
+      id: '${json['id']}',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      logoUrl: json['logoUrl']?.toString() ?? '',
+      bannerUrl: json['bannerUrl']?.toString() ?? '',
+      ownerId: json['ownerId']?.toString() ?? '',
+      productCount: (json['productCount'] as num?)?.toInt() ?? 0,
+      // The API always sends an ISO timestamp, but fall back to now so a
+      // malformed date cannot break the whole list.
+      createdAt: DateTime.tryParse('${json['createdAt']}') ?? DateTime.now(),
+      whatsappLink: json['whatsappLink']?.toString() ?? '',
+      theme: json['theme']?.toString() ?? 'atelier',
+      themeConfig: ShopThemeConfig.fromJson(json['themeConfig'] as Map<String, dynamic>?),
+      // The API allows a null subdomain for shops created before the field
+      // existed, so this cannot be assumed non-empty.
+      subdomain: json['subdomain']?.toString() ?? '',
+    );
+  }
 }

@@ -190,8 +190,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () {
-                provider.logout();
+              onPressed: () async {
+                // The session is cleared server-side by dropping the tokens, so
+                // wait for storage to be wiped before leaving the screen.
+                await provider.logout();
+                if (!context.mounted) return;
                 Navigator.pushReplacementNamed(context, '/login');
               },
               icon: const Icon(Icons.logout_rounded, color: AppTheme.error),
@@ -308,13 +311,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () {
-                  provider.updateProfile(
+                onPressed: () async {
+                  final saved = await provider.updateProfile(
                     name: nameController.text,
                     phone: phoneController.text,
                     address: addressController.text,
                   );
+                  if (!ctx.mounted) return;
                   Navigator.pop(ctx);
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        saved
+                            ? 'Profil mis à jour'
+                            : (provider.dataError ?? 'Impossible d\'enregistrer'),
+                      ),
+                      backgroundColor: saved ? AppTheme.success : AppTheme.error,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
                 },
                 child: const Text('Enregistrer'),
               ),

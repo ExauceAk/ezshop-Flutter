@@ -33,14 +33,14 @@ class _SignupScreenState extends State<SignupScreen> {
   void _handleSignup() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
     final provider = context.read<AppProvider>();
-    final success = provider.signup(
+    final success = await provider.signup(
       _nameController.text,
       _emailController.text,
       _passwordController.text,
       _confirmPasswordController.text,
     );
+    if (!mounted) return;
     setState(() => _isLoading = false);
     if (success && mounted) {
       Navigator.pushReplacementNamed(context, '/home');

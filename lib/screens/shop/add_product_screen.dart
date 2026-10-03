@@ -336,7 +336,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  void _submit() {
+  void _submit() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedImages.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -348,7 +348,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         return;
       }
 
-      context.read<AppProvider>().addProduct(
+      final provider = context.read<AppProvider>();
+      final success = await provider.addProduct(
         shopId: widget.shopId,
         name: _nameController.text,
         description: _descController.text,
@@ -357,6 +358,20 @@ class _AddProductScreenState extends State<AddProductScreen> {
         imageUrl: _selectedImages.first.path,
         categoryId: _selectedCategoryId,
       );
+      if (!mounted) return;
+
+      if (!success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              provider.dataError ?? 'Impossible de publier le produit',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+        return;
+      }
 
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(

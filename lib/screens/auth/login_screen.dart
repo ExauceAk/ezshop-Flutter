@@ -28,9 +28,12 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
     final provider = context.read<AppProvider>();
-    final success = provider.login(_emailController.text, _passwordController.text);
+    final success = await provider.login(
+      _emailController.text,
+      _passwordController.text,
+    );
+    if (!mounted) return;
     setState(() => _isLoading = false);
     if (success && mounted) {
       Navigator.pushReplacementNamed(context, '/home');
