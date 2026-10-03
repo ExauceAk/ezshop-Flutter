@@ -67,12 +67,10 @@ class StorefrontPreview extends StatelessWidget {
   String get _aboutTitle =>
       config.aboutTitle.isNotEmpty ? config.aboutTitle : 'À propos de $name';
 
-  String get _aboutText =>
-      config.aboutText.isNotEmpty ? config.aboutText : description;
+  String get _aboutText => config.aboutText.isNotEmpty ? config.aboutText : description;
 
-  String get _footerText => config.footerText.isNotEmpty
-      ? config.footerText
-      : '$name · Boutique sur Macketttz';
+  String get _footerText =>
+      config.footerText.isNotEmpty ? config.footerText : '$name · Boutique sur Macketttz';
 
   @override
   Widget build(BuildContext context) {
@@ -103,16 +101,34 @@ class StorefrontPreview extends StatelessWidget {
   Widget _buildHero() {
     switch (theme.heroStyle) {
       case HeroStyle.overlay:
-        return _HeroOverlay(theme, _heroImage, _heroEyebrow, _heroTitle,
-            _heroSubtitle, _ctaLabel);
+        return _HeroOverlay(
+          theme,
+          _heroImage,
+          _heroEyebrow,
+          _heroTitle,
+          _heroSubtitle,
+          _ctaLabel,
+        );
       case HeroStyle.split:
-        return _HeroSplit(theme, _heroImage, _heroEyebrow, _heroTitle,
-            _heroSubtitle, _ctaLabel);
+        return _HeroSplit(
+          theme,
+          _heroImage,
+          _heroEyebrow,
+          _heroTitle,
+          _heroSubtitle,
+          _ctaLabel,
+        );
       case HeroStyle.stacked:
         return _HeroStacked(theme, _heroEyebrow, _heroTitle, _heroSubtitle, _ctaLabel);
       case HeroStyle.strip:
-        return _HeroStrip(theme, _heroImage, logoUrl, _heroEyebrow, _heroTitle,
-            _heroSubtitle);
+        return _HeroStrip(
+          theme,
+          _heroImage,
+          logoUrl,
+          _heroEyebrow,
+          _heroTitle,
+          _heroSubtitle,
+        );
     }
   }
 }
@@ -123,7 +139,11 @@ class StorefrontPreview extends StatelessWidget {
 
 /// Heading font of a theme, mapped to the Google Fonts helper that matches it.
 TextStyle _heading(ShopTheme theme, double size, {Color? color, FontWeight? weight}) {
-  final base = TextStyle(fontSize: size, color: color ?? theme.textColor, fontWeight: weight);
+  final base = TextStyle(
+    fontSize: size,
+    color: color ?? theme.textColor,
+    fontWeight: weight,
+  );
   switch (theme.id) {
     case 'vitrine':
       return GoogleFonts.cormorantGaramond(textStyle: base);
@@ -139,8 +159,19 @@ TextStyle _heading(ShopTheme theme, double size, {Color? color, FontWeight? weig
 }
 
 /// Body font of a theme.
-TextStyle _body(ShopTheme theme, double size, {Color? color, FontWeight? weight, double? height}) {
-  final base = TextStyle(fontSize: size, color: color ?? theme.textColor, fontWeight: weight, height: height);
+TextStyle _body(
+  ShopTheme theme,
+  double size, {
+  Color? color,
+  FontWeight? weight,
+  double? height,
+}) {
+  final base = TextStyle(
+    fontSize: size,
+    color: color ?? theme.textColor,
+    fontWeight: weight,
+    height: height,
+  );
   switch (theme.id) {
     case 'vitrine':
       return GoogleFonts.jost(textStyle: base);
@@ -199,8 +230,14 @@ class _Header extends StatelessWidget {
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
-                      color: theme.primary, borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.storefront_rounded, size: 16, color: Colors.white),
+                    color: theme.primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.storefront_rounded,
+                    size: 16,
+                    color: Colors.white,
+                  ),
                 ),
               const SizedBox(width: 10),
               Expanded(
@@ -260,51 +297,62 @@ class _HeroOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: theme.heroMinHeight,
+    const padding = EdgeInsets.all(20);
+
+    return Container(
       width: double.infinity,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.network(imageUrl, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => ColoredBox(color: theme.primaryDark)),
-          // Gradient keeps the copy readable over any image.
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.15),
-                  Colors.black.withValues(alpha: 0.65),
-                ],
+      // A minimum, not a fixed height: a long shop description must push the
+      // hero taller instead of overflowing it.
+      constraints: BoxConstraints(minHeight: theme.heroMinHeight),
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
+          onError: (_, __) {},
+        ),
+        // Gradient keeps the copy readable over any image, and doubles as the
+        // fallback background when the image fails to load.
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.15),
+            Colors.black.withValues(alpha: 0.65),
+          ],
+        ),
+      ),
+      child: Padding(
+        padding: padding,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: theme.heroMinHeight - padding.vertical),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                eyebrow.toUpperCase(),
+                style: _body(theme, 10, color: Colors.white70, weight: FontWeight.w600),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: _heading(theme, 26, color: Colors.white, weight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: _body(theme, 12, color: Colors.white70),
+              ),
+              const SizedBox(height: 14),
+              _Cta(theme: theme, label: cta),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(eyebrow.toUpperCase(),
-                    style: _body(theme, 10, color: Colors.white70, weight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Text(title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: _heading(theme, 26, color: Colors.white, weight: FontWeight.w700)),
-                const SizedBox(height: 6),
-                Text(subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: _body(theme, 12, color: Colors.white70)),
-                const SizedBox(height: 14),
-                _Cta(theme: theme, label: cta),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -330,40 +378,58 @@ class _HeroSplit extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: theme.heroMinHeight,
-      child: Row(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(eyebrow.toUpperCase(),
-                      style: _body(theme, 10, color: theme.accent, weight: FontWeight.w700)),
+    return ConstrainedBox(
+      // Minimum height again: the copy column is what grows when the seller
+      // writes a long description, and the image follows it.
+      constraints: BoxConstraints(minHeight: theme.heroMinHeight),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: theme.heroMinHeight - 40),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(
+                    eyebrow.toUpperCase(),
+                    style: _body(theme, 10, color: theme.accent, weight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 8),
-                  Text(title,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: _heading(theme, 24, weight: FontWeight.w700)),
+                  Text(
+                    title,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: _heading(theme, 24, weight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 6),
-                  Text(subtitle,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: _body(theme, 12, color: theme.muted)),
+                  Text(
+                    subtitle,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: _body(theme, 12, color: theme.muted),
+                  ),
                   const SizedBox(height: 14),
-                  _Cta(theme: theme, label: cta),
-                ],
+                      _Cta(theme: theme, label: cta),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: Image.network(imageUrl, fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => ColoredBox(color: theme.primary)),
-          ),
-        ],
+            Expanded(
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => ColoredBox(color: theme.primary),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -387,20 +453,26 @@ class _HeroStacked extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(eyebrow.toUpperCase(),
-              style: _body(theme, 10, color: theme.muted, weight: FontWeight.w600)),
+          Text(
+            eyebrow.toUpperCase(),
+            style: _body(theme, 10, color: theme.muted, weight: FontWeight.w600),
+          ),
           const SizedBox(height: 10),
-          Text(title,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: _heading(theme, 26, weight: FontWeight.w700)),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: _heading(theme, 26, weight: FontWeight.w700),
+          ),
           const SizedBox(height: 8),
-          Text(subtitle,
-              textAlign: TextAlign.center,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: _body(theme, 12, color: theme.muted)),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: _body(theme, 12, color: theme.muted),
+          ),
           const SizedBox(height: 16),
           _Cta(theme: theme, label: cta),
         ],
@@ -429,48 +501,72 @@ class _HeroStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: theme.heroMinHeight,
-      decoration: BoxDecoration(
-        image: DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover,
-            onError: (_, __) {}),
-        color: theme.primary,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              logoUrl.isEmpty ? theme.previewImage : logoUrl,
-              width: 62,
-              height: 62,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(width: 62, height: 62, color: theme.surface),
-            ),
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: theme.heroMinHeight),
+      child: Container(
+        constraints: BoxConstraints(minHeight: theme.heroMinHeight),
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: NetworkImage(imageUrl),
+            fit: BoxFit.cover,
+            onError: (_, __) {},
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(eyebrow.toUpperCase(),
-                    style: _body(theme, 9, color: Colors.white70, weight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: _heading(theme, 20, color: Colors.white, weight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text(subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: _body(theme, 11, color: Colors.white70)),
-              ],
+          color: theme.primary,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                logoUrl.isEmpty ? theme.previewImage : logoUrl,
+                width: 62,
+                height: 62,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Container(width: 62, height: 62, color: theme.surface),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    eyebrow.toUpperCase(),
+                    style: _body(
+                      theme,
+                      9,
+                      color: Colors.white70,
+                      weight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: _heading(
+                      theme,
+                      20,
+                      color: Colors.white,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: _body(theme, 11, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -486,9 +582,14 @@ class _Cta extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-      decoration: BoxDecoration(color: theme.primary, borderRadius: BorderRadius.circular(theme.radius)),
-      child: Text(label,
-          style: _body(theme, 11, color: Colors.white, weight: FontWeight.w600)),
+      decoration: BoxDecoration(
+        color: theme.primary,
+        borderRadius: BorderRadius.circular(theme.radius),
+      ),
+      child: Text(
+        label,
+        style: _body(theme, 11, color: Colors.white, weight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -511,7 +612,9 @@ class _Stats extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.surface,
         borderRadius: BorderRadius.circular(theme.radius),
-        border: theme.cardStyle == CardStyle.bordered ? Border.all(color: theme.border) : null,
+        border: theme.cardStyle == CardStyle.bordered
+            ? Border.all(color: theme.border)
+            : null,
       ),
       child: Row(
         children: [
@@ -537,7 +640,8 @@ class _Stats extends StatelessWidget {
     );
   }
 
-  Widget _divider(ShopTheme theme) => Container(width: 1, height: 22, color: theme.border);
+  Widget _divider(ShopTheme theme) =>
+      Container(width: 1, height: 22, color: theme.border);
 }
 
 class _About extends StatelessWidget {
@@ -562,8 +666,12 @@ class _About extends StatelessWidget {
         children: [
           Text(title, style: _heading(theme, 17, weight: FontWeight.w700)),
           const SizedBox(height: 8),
-          Text(text, maxLines: 4, overflow: TextOverflow.ellipsis,
-              style: _body(theme, 12, color: theme.muted, height: 1.5)),
+          Text(
+            text,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+            style: _body(theme, 12, color: theme.muted, height: 1.5),
+          ),
         ],
       ),
     );
@@ -585,11 +693,13 @@ class _Footer extends StatelessWidget {
         color: theme.isDark ? theme.surface : theme.background,
         border: Border(top: BorderSide(color: theme.border)),
       ),
-      child: Text(text,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: _body(theme, 11, color: theme.muted)),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: _body(theme, 11, color: theme.muted),
+      ),
     );
   }
 }
@@ -724,8 +834,15 @@ class _ProductCard extends StatelessWidget {
                           color: product.isNeuf ? theme.primary : theme.accent,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Text(product.isNeuf ? 'Neuf' : 'Occas.',
-                            style: _body(theme, 8, color: Colors.white, weight: FontWeight.w700)),
+                        child: Text(
+                          product.isNeuf ? 'Neuf' : 'Occas.',
+                          style: _body(
+                            theme,
+                            8,
+                            color: Colors.white,
+                            weight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
                   if (!product.isAvailable)
@@ -733,7 +850,10 @@ class _ProductCard extends StatelessWidget {
                       child: ColoredBox(
                         color: theme.background.withValues(alpha: 0.6),
                         child: Center(
-                          child: Text('Épuisé', style: _body(theme, 10, color: theme.muted)),
+                          child: Text(
+                            'Épuisé',
+                            style: _body(theme, 10, color: theme.muted),
+                          ),
                         ),
                       ),
                     ),
@@ -746,10 +866,12 @@ class _ProductCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(product.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: _body(theme, 11, weight: FontWeight.w600)),
+                Text(
+                  product.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _body(theme, 11, weight: FontWeight.w600),
+                ),
                 const SizedBox(height: 3),
                 // Cards are narrow on a phone: scale the price line down
                 // rather than letting a long amount with a struck-through
@@ -759,14 +881,25 @@ class _ProductCard extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Row(
                     children: [
-                      Text(_formatPrice(product.price),
-                          style: _body(theme, 11, color: theme.primary, weight: FontWeight.w700)),
+                      Text(
+                        _formatPrice(product.price),
+                        style: _body(
+                          theme,
+                          11,
+                          color: theme.primary,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
                       if (product.oldPrice != null) ...[
                         const SizedBox(width: 5),
-                        Text(_formatPrice(product.oldPrice!),
-                            style: _body(theme, 9, color: theme.muted).copyWith(
-                              decoration: TextDecoration.lineThrough,
-                            )),
+                        Text(
+                          _formatPrice(product.oldPrice!),
+                          style: _body(
+                            theme,
+                            9,
+                            color: theme.muted,
+                          ).copyWith(decoration: TextDecoration.lineThrough),
+                        ),
                       ],
                     ],
                   ),
@@ -801,9 +934,14 @@ class _ProductRow extends StatelessWidget {
             padding: const EdgeInsets.all(5),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(theme.radius * 0.6),
-              child: Image.network(product.imageUrl,
-                  width: 78, height: 60, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(width: 78, height: 60, color: theme.background)),
+              child: Image.network(
+                product.imageUrl,
+                width: 78,
+                height: 60,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Container(width: 78, height: 60, color: theme.background),
+              ),
             ),
           ),
           Expanded(
@@ -812,18 +950,24 @@ class _ProductRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product.category.toUpperCase(),
-                      style: _body(theme, 8, color: theme.accent, weight: FontWeight.w700)),
+                  Text(
+                    product.category.toUpperCase(),
+                    style: _body(theme, 8, color: theme.accent, weight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 2),
-                  Text(product.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: _body(theme, 12, weight: FontWeight.w600)),
+                  Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _body(theme, 12, weight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 2),
-                  Text(product.description,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: _body(theme, 10, color: theme.muted)),
+                  Text(
+                    product.description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _body(theme, 10, color: theme.muted),
+                  ),
                 ],
               ),
             ),
@@ -833,11 +977,15 @@ class _ProductRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(_formatPrice(product.price),
-                    style: _body(theme, 12, color: theme.primary, weight: FontWeight.w700)),
+                Text(
+                  _formatPrice(product.price),
+                  style: _body(theme, 12, color: theme.primary, weight: FontWeight.w700),
+                ),
                 if (theme.showBadge)
-                  Text(product.isNeuf ? 'Neuf' : 'Occas.',
-                      style: _body(theme, 9, color: theme.muted)),
+                  Text(
+                    product.isNeuf ? 'Neuf' : 'Occas.',
+                    style: _body(theme, 9, color: theme.muted),
+                  ),
               ],
             ),
           ),
