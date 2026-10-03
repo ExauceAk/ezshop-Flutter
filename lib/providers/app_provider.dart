@@ -166,6 +166,10 @@ class AppProvider extends ChangeNotifier {
   /// The catalog entry of a shop's theme, for its name and description.
   ShopTheme themeOf(Shop shop) => getStorefrontTheme(shop.theme);
 
+  /// The catalog entry for a bare theme id, used while a theme is still being
+  /// chosen and no shop exists yet.
+  ShopTheme themeFor(String themeId) => getStorefrontTheme(themeId);
+
   @override
   void dispose() {
     _client.dispose();

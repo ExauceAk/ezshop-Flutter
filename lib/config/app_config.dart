@@ -31,16 +31,18 @@ class AppConfig {
     defaultValue: 'macketttz.test',
   );
 
-  /// Address that actually opens a shop's storefront.
+  /// Address that opens a shop's storefront.
   ///
-  /// The pretty `<subdomain>.<domain>` form only resolves when DNS points at
-  /// this server, so it is only shown as text. Opening the shop uses the
-  /// `/shop/<subdomain>` path instead: it reaches the same page from the app
-  /// and from a phone, where the host is a bare IP and no subdomain can be
-  /// derived from it.
+  /// Uses the real subdomain so the seller sees the address their customers
+  /// will type, and `proxy.ts` resolves it to the same page as `/shop/<sub>`.
   static String shopUrl(String subdomain) {
     if (subdomain.isEmpty) return webUrl;
-    return '$webUrl/shop/$subdomain';
+    final scheme = Uri.parse(webUrl).scheme;
+    final port = Uri.parse(webUrl).port;
+    // `.localhost` resolves to the loopback in every browser, so
+    // `techzone.localhost:3000` works locally exactly like the production
+    // subdomain will.
+    return '$scheme://$subdomain.localhost:$port';
   }
 
   /// Pretty address displayed to the seller, e.g. `techzone.macketttz.test`.
