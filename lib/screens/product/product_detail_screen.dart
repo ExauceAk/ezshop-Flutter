@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/product_model.dart';
+import '../../models/shop_model.dart';
+import '../../utils/price_format.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -33,6 +37,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
+    // The shop is fetched with the rest of the app state, so the seller line
+    // shows the shop name and its WhatsApp number instead of the raw shop id.
+    final shop = context.watch<AppProvider>().getShopById(product.shopId);
+    final images = product.images.where((url) => url.isNotEmpty).toList();
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: CustomScrollView(
@@ -77,28 +86,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 children: [
-                  // Image PageView
-                  PageView.builder(
-                    controller: _pageController,
-                    itemCount: product.images.length,
-                    onPageChanged: (index) {
-                      setState(() => _currentImageIndex = index);
-                    },
-                    itemBuilder: (context, index) {
-                      return Container(
-                        color: const Color(0xFFF1F3F5),
-                        child: Image.network(
-                          product.images[index],
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Center(
-                            child: Icon(Icons.image_outlined, size: 60, color: AppTheme.textHint),
+                  // Image PageView — tap opens the zoomable viewer.
+                  GestureDetector(
+                    onTap: images.isEmpty ? null : _openGallery,
+                    child: images.isEmpty
+                        ? Container(
+                            color: const Color(0xFFF1F3F5),
+                            child: const Center(
+                              child: Icon(Icons.image_outlined, size: 60, color: AppTheme.textHint),
+                            ),
+                          )
+                        : PageView.builder(
+                            controller: _pageController,
+                            itemCount: images.length,
+                            onPageChanged: (index) {
+                              setState(() => _currentImageIndex = index);
+                            },
+                            itemBuilder: (context, index) {
+                              return Container(
+                                color: const Color(0xFFF1F3F5),
+                                child: Hero(
+                                  tag: _heroTag(index),
+                                  child: Image.network(
+                                    images[index],
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Center(
+                                      child: Icon(Icons.image_outlined, size: 60, color: AppTheme.textHint),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        ),
-                      );
-                    },
                   ),
                   // Image indicator dots
-                  if (product.images.length > 1)
+                  if (images.length > 1)
                     Positioned(
                       bottom: 16,
                       left: 0,
@@ -106,7 +128,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(
-                          product.images.length,
+                          images.length,
                           (index) => AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
                             margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -189,7 +211,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   Row(
                     children: [
                       Text(
-                        '\$${product.price.toStringAsFixed(2)}',
+                        formatPrice(product.price),
                         style: GoogleFonts.poppins(
                           fontSize: 26,
                           fontWeight: FontWeight.w800,
@@ -199,7 +221,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       if (product.oldPrice != null) ...[
                         const SizedBox(width: 8),
                         Text(
-                          '\$${product.oldPrice!.toStringAsFixed(2)}',
+                          formatPrice(product.oldPrice!),
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             color: AppTheme.textHint,
@@ -234,29 +256,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     decoration: AppTheme.cardDecoration,
                     child: Row(
                       children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primary.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.storefront_rounded, color: AppTheme.primary),
-                        ),
+                        _buildShopLogo(shop),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Vendeur',
+                                'Vendu par',
                                 style: GoogleFonts.poppins(
                                   fontSize: 12,
                                   color: AppTheme.textSecondary,
                                 ),
                               ),
                               Text(
-                                product.shopId,
+                                shop?.name ?? product.sellerName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
@@ -274,10 +290,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton.icon(
-                      onPressed: () => _launchWhatsApp(product),
+                      onPressed: shop != null ? () => _launchWhatsApp(product, shop) : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF25D366),
                         foregroundColor: Colors.white,
+                        disabledBackgroundColor: const Color(0xFFB9C4BD),
+                        disabledForegroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -285,7 +303,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ),
                       icon: const Icon(Icons.chat_rounded, size: 22),
                       label: Text(
-                        'Contacter via WhatsApp',
+                        shop != null
+                            ? 'Contacter via WhatsApp'
+                            : 'Boutique inconnue',
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -303,13 +323,108 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  void _launchWhatsApp(Product product) async {
-    final message = Uri.encodeComponent(
-      'Bonjour, je suis intéressé par "${product.name}" à \$${product.price.toStringAsFixed(2)}. Est-il encore disponible ?',
+  /// Tag shared by the carousel and the fullscreen viewer, so the opened image
+/// is the one that flies into place.
+String _heroTag(int index) => 'product-image-${widget.product.id}-$index';
+
+/// Fullscreen viewer: pinch to zoom, double tap, swipe between images.
+void _openGallery() {
+  final images = widget.product.images.where((url) => url.isNotEmpty).toList();
+  if (images.isEmpty) return;
+
+  Navigator.of(context).push(
+    PageRouteBuilder(
+      opaque: false,
+      barrierColor: Colors.black,
+      pageBuilder: (_, animation, __) => PhotoViewGallery.builder(
+        pageController: PageController(initialPage: _currentImageIndex),
+        itemCount: images.length,
+        onPageChanged: (index) => setState(() => _currentImageIndex = index),
+        backgroundDecoration: const BoxDecoration(color: Colors.black),
+        loadingBuilder: (_, event) => const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+        builder: (context, index) => PhotoViewGalleryPageOptions(
+          imageProvider: NetworkImage(images[index]),
+          heroAttributes: PhotoViewHeroAttributes(tag: _heroTag(index)),
+          minScale: PhotoViewComputedScale.contained,
+          maxScale: PhotoViewComputedScale.covered * 3,
+        ),
+      ),
+      transitionsBuilder: (_, animation, __, child) =>
+          FadeTransition(opacity: animation, child: child),
+    ),
+  );
+}
+
+/// Shop logo, falling back to the storefront icon.
+Widget _buildShopLogo(Shop? shop) {
+  final logoUrl = shop?.logoUrl ?? '';
+
+  if (logoUrl.isEmpty) {
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(Icons.storefront_rounded, color: AppTheme.primary),
     );
-    final url = Uri.parse('https://wa.me/$message');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
   }
+
+  return ClipOval(
+    child: Image.network(
+      logoUrl,
+      width: 50,
+      height: 50,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          color: AppTheme.primary.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.storefront_rounded, color: AppTheme.primary),
+      ),
+    ),
+  );
+}
+
+/// Opens WhatsApp on the shop's own number, with the product pre-filled.
+Future<void> _launchWhatsApp(Product product, Shop shop) async {
+  // `whatsappLink` is a `wa.me` address, so the number is its last path segment.
+  final digits = shop.whatsappLink
+      .split('?')
+      .first
+      .split('/')
+      .last
+      .replaceAll(RegExp(r'[^0-9]'), '');
+  if (digits.isEmpty) {
+    _showNoWhatsApp();
+    return;
+  }
+
+  final message = Uri.encodeComponent(
+    'Bonjour, je suis intéressé par « ${product.name} » à '
+    '${formatPrice(product.price)}. Est-il encore disponible ?',
+  );
+  final url = Uri.parse('https://wa.me/$digits?text=$message');
+
+  if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+    _showNoWhatsApp();
+  }
+}
+
+void _showNoWhatsApp() {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        'WhatsApp indisponible : cette boutique n\'a pas renseigné de numéro.',
+        style: GoogleFonts.poppins(fontSize: 13),
+      ),
+    ),
+  );
+}
 }
