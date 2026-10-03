@@ -23,6 +23,9 @@ class ShopScreen extends StatefulWidget {
 class _ShopScreenState extends State<ShopScreen> {
   Shop? _selectedShop;
 
+  /// Illustration violette servant de fond aux écrans de boutique.
+  static const _backdropAsset = 'assets/images/storefront-illustration-preview.png';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,22 +110,49 @@ class _ShopScreenState extends State<ShopScreen> {
   Widget _buildShopListView(List<Shop> shops, AppProvider provider) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                onPressed: () => Navigator.pop(context),
+        // ─── Hero banner (same purple artwork as the shop detail) ───
+        SizedBox(
+          height: 148,
+          width: double.infinity,
+          child: _buildVioletBackdrop(
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 20, 20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Mes Boutiques',
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                        const SizedBox(height: 2),
+                        Text('${shops.length} boutique${shops.length > 1 ? 's' : ''} en ligne',
+                            style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withOpacity(0.85))),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              Text('Mes Boutiques', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800)),
-              const Spacer(),
-              Text('${shops.length}', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.primary)),
-            ],
+            ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -168,52 +198,53 @@ class _ShopScreenState extends State<ShopScreen> {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 3))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
+            // ─── Card cover: the shop's own banner, the artwork otherwise ───
+            SizedBox(
+              height: 96,
               width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [accent, accent.withOpacity(0.7)],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+              child: _buildVioletBackdrop(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                imageUrl: shop.bannerUrl.isNotEmpty ? shop.bannerUrl : null,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44, height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(shop.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.25), borderRadius: BorderRadius.circular(6)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star_rounded, color: Colors.white, size: 11),
+                            const SizedBox(width: 2),
+                            Text(shop.rating.toString(), style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 11, color: Colors.white)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(shop.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.25), borderRadius: BorderRadius.circular(6)),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.star_rounded, color: Colors.white, size: 11),
-                        const SizedBox(width: 2),
-                        Text(shop.rating.toString(), style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 11, color: Colors.white)),
-                      ],
-                    ),
-                  ),
-                ],
               ),
             ),
             Padding(
@@ -230,6 +261,64 @@ class _ShopScreenState extends State<ShopScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════
+  //  PURPLE BACKDROP
+  // ═══════════════════════════════════════
+
+  /// Purple artwork used as the background of the shop screens.
+  ///
+  /// Falls back to the bundled illustration when the shop has no banner, and
+  /// always darkens it a little so white text stays readable on top.
+  Widget _buildVioletBackdrop({
+    required Widget child,
+    BorderRadius borderRadius = BorderRadius.zero,
+    String? imageUrl,
+  }) {
+    final backdrop = imageUrl != null && imageUrl.isNotEmpty
+        ? Image.network(
+            imageUrl,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Image.asset(
+              _backdropAsset,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          )
+        : Image.asset(
+            _backdropAsset,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+          );
+
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          backdrop,
+          // Voile sombre : garde le contraste du texte blanc.
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.black.withOpacity(0.18),
+                  Colors.black.withOpacity(0.34),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+          child,
+        ],
       ),
     );
   }
@@ -355,7 +444,7 @@ class _ShopScreenState extends State<ShopScreen> {
                           children: [
                             // Full background image
                             Image.asset(
-                              'assets/images/storefront-illustration-preview.png',
+                              _backdropAsset,
                               width: double.infinity,
                               height: double.infinity,
                               fit: BoxFit.cover,
