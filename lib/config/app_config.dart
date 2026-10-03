@@ -31,48 +31,22 @@ class AppConfig {
     defaultValue: 'macketttz.test',
   );
 
-  /// True when the storefront runs on a developer machine.
-  ///
-  /// A phone on the same Wi-Fi as the dev machine reaches it through its LAN IP;
-  /// `*.localhost` only resolves on the machine itself, so the internal
-  /// `/shop/<sub>` path is used instead of a subdomain that would fail there.
-  static bool get _isLocalDev {
-    final hostname = Uri.parse(webUrl).host;
-    return hostname == 'localhost' ||
-        hostname == '127.0.0.1' ||
-        hostname.endsWith('.localhost') ||
-        _isPrivateIp(hostname);
-  }
-
-  static bool _isPrivateIp(String hostname) {
-    return RegExp(r'^10\.\d+\.\d+\.\d+$').hasMatch(hostname) ||
-        RegExp(r'^192\.168\.\d+\.\d+$').hasMatch(hostname) ||
-        RegExp(r'^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$').hasMatch(hostname);
-  }
-
   /// Address that opens a shop's storefront.
   ///
-  /// On a developer machine it goes through `/shop/<sub>` on the LAN IP, the
-  /// only shape a phone can resolve. In production the subdomain is used, so
-  /// the seller and their customers read the same address.
+  /// Always the shop's own subdomain: the address customers type, and the only
+  /// one the site answers on. `.localhost` resolves on the machine itself,
+  /// which is how the subdomain is exercised locally before the real domain
+  /// points at it.
   static String shopUrl(String subdomain) {
     if (subdomain.isEmpty) return webUrl;
-    final uri = Uri.parse(webUrl);
-
-    if (_isLocalDev) {
-      return '${uri.scheme}://${uri.authority}/shop/$subdomain';
-    }
-
-    return '${uri.scheme}://$subdomain.$shopDomain';
+    final scheme = Uri.parse(webUrl).scheme;
+    final port = Uri.parse(webUrl).port;
+    return '$scheme://$subdomain.localhost:$port';
   }
 
-  /// Pretty address displayed to the seller.
-  ///
-  /// Mirrors [shopUrl] in development so the link shown is the one that opens,
-  /// and stays the bare domain in production.
+  /// Pretty address displayed to the seller, e.g. `techzone.macketttz.test`.
   static String shopDisplayUrl(String subdomain) {
     if (subdomain.isEmpty) return shopDomain;
-    if (_isLocalDev) return shopUrl(subdomain);
     return '$subdomain.$shopDomain';
   }
 }
