@@ -45,15 +45,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Bonjour, 👋', style: GoogleFonts.poppins(fontSize: 14, color: AppTheme.textSecondary)),
-                    Text(
-                      provider.currentUser?.name ?? 'Invité',
-                      style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
-                    ),
-                  ],
+                child: Text(
+                  provider.currentUser?.name ?? 'Invité',
+                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                 ),
               ),
               Container(
