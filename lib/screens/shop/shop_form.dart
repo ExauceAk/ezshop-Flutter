@@ -102,6 +102,8 @@ class ShopForm extends StatefulWidget {
     required this.themes,
     required this.onChanged,
     required this.onPreview,
+    this.existingLogo = '',
+    this.existingBanner = '',
   });
 
   final ShopFormData initial;
@@ -111,6 +113,13 @@ class ShopForm extends StatefulWidget {
   final ValueChanged<ShopFormData> onChanged;
 
   final VoidCallback onPreview;
+
+  /// Image already stored on the shop, shown until a new one is picked.
+  ///
+  /// Without this the slot looks empty while editing, which reads as if the
+  /// shop had no logo.
+  final String existingLogo;
+  final String existingBanner;
 
   @override
   State<ShopForm> createState() => _ShopFormState();
@@ -192,6 +201,7 @@ class _ShopFormState extends State<ShopForm> {
             width: 92,
             radius: 20,
             file: _data.logoFile,
+            url: widget.existingLogo,
             onTap: () => _pick(isLogo: true),
           ),
           const SizedBox(height: 24),
@@ -221,6 +231,7 @@ class _ShopFormState extends State<ShopForm> {
             height: 110,
             radius: 14,
             file: _data.bannerFile,
+            url: widget.existingBanner,
             onTap: () => _pick(isLogo: false),
           ),
           const SizedBox(height: 28),
@@ -406,6 +417,7 @@ class _ImageSlot extends StatelessWidget {
     required this.radius,
     required this.file,
     required this.onTap,
+    this.url = '',
     this.width,
   });
 
@@ -413,6 +425,10 @@ class _ImageSlot extends StatelessWidget {
   final double? width;
   final double radius;
   final File? file;
+
+  /// Image already stored server-side, used until a new one is picked.
+  final String url;
+
   final VoidCallback onTap;
 
   @override
@@ -433,7 +449,15 @@ class _ImageSlot extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: file != null
             ? Image.file(file!, fit: BoxFit.cover)
-            : const _Placeholder(),
+            : url.isNotEmpty
+                // The image already saved on the shop, so editing does not
+                // pretend the shop has no logo.
+                ? Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const _Placeholder(),
+                  )
+                : const _Placeholder(),
       ),
     );
   }

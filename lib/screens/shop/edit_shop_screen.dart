@@ -81,6 +81,8 @@ class _EditShopScreenState extends State<EditShopScreen> {
           return ShopForm(
             initial: _data,
             themes: provider.themes,
+            existingLogo: widget.shop.logoUrl,
+            existingBanner: widget.shop.bannerUrl,
             onChanged: (data) => _data = data,
             onPreview: () => _openPreview(provider),
           );
