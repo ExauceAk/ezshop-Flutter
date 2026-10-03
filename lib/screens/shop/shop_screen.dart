@@ -11,6 +11,7 @@ import '../product/product_detail_screen.dart';
 import 'add_product_screen.dart';
 import 'create_shop_screen.dart';
 import 'edit_shop_screen.dart';
+import 'shop_webview_screen.dart';
 import '../../config/app_config.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -216,14 +217,7 @@ class _ShopScreenState extends State<ShopScreen> {
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      Container(
-                        width: 44, height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 22),
-                      ),
+                      _buildShopLogo(shop, size: 44, radius: 12),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(shop.name, maxLines: 2, overflow: TextOverflow.ellipsis,
@@ -458,14 +452,7 @@ class _ShopScreenState extends State<ShopScreen> {
                                   // Shop icon + name + rating
                                   Row(
                                     children: [
-                                      Container(
-                                        width: 64, height: 64,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.25),
-                                          borderRadius: BorderRadius.circular(18),
-                                        ),
-                                        child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 32),
-                                      ),
+                                      _buildShopLogo(shop, size: 64, radius: 18),
                                       const SizedBox(width: 18),
                                       Expanded(
                                         child: Column(
@@ -497,7 +484,12 @@ class _ShopScreenState extends State<ShopScreen> {
                                   Row(
                                     children: [
                                       if (shop.subdomain.isNotEmpty)
-                                        _buildDetailMetaChip(Icons.language_rounded, '${shop.subdomain}.mackettttz.test', 'Domaine de la boutique'),
+                                        _buildDetailMetaChip(
+                                          Icons.language_rounded,
+                                          AppConfig.shopDisplayUrl(shop.subdomain),
+                                          'Voir la boutique',
+                                          onTap: () => _openShopWebView(shop),
+                                        ),
                                       if (shop.subdomain.isNotEmpty) const SizedBox(width: 10),
                                       _buildDetailMetaChip(Icons.palette_rounded, theme?.name ?? shop.theme, 'Thème actif'),
                                     ],
@@ -711,34 +703,75 @@ class _ShopScreenState extends State<ShopScreen> {
     launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
+  // ─── Opens the shop's public page inside the app ───
+  void _openShopWebView(Shop shop) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ShopWebViewScreen(shop: shop)),
+    );
+  }
+
+  // ─── Shop logo, falling back to the storefront icon ───
+  Widget _buildShopLogo(Shop shop, {required double size, required double radius}) {
+    final placeholder = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: Icon(Icons.storefront_rounded, color: Colors.white, size: size * 0.5),
+    );
+
+    if (shop.logoUrl.isEmpty) return placeholder;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Image.network(
+        shop.logoUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => placeholder,
+      ),
+    );
+  }
+
   // ─── Meta chip for detail banner (with subtitle) ───
-  Widget _buildDetailMetaChip(IconData icon, String title, String subtitle) {
+  Widget _buildDetailMetaChip(IconData icon, String title, String subtitle, {VoidCallback? onTap}) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(fontSize: 9, color: Colors.white.withOpacity(0.7))),
-                ],
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(fontSize: 9, color: Colors.white.withOpacity(0.7))),
+                  ],
+                ),
               ),
-            ),
-          ],
+              if (onTap != null) ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right_rounded, size: 16, color: Colors.white),
+              ],
+            ],
+          ),
         ),
       ),
     );
