@@ -31,23 +31,48 @@ class AppConfig {
     defaultValue: 'macketttz.test',
   );
 
-  /// Address that opens a shop's storefront.
+  /// True when the storefront runs on a developer machine.
   ///
-  /// Uses the real subdomain so the seller sees the address their customers
-  /// will type, and `proxy.ts` resolves it to the same page as `/shop/<sub>`.
-  static String shopUrl(String subdomain) {
-    if (subdomain.isEmpty) return webUrl;
-    final scheme = Uri.parse(webUrl).scheme;
-    final port = Uri.parse(webUrl).port;
-    // `.localhost` resolves to the loopback in every browser, so
-    // `techzone.localhost:3000` works locally exactly like the production
-    // subdomain will.
-    return '$scheme://$subdomain.localhost:$port';
+  /// A phone on the same Wi-Fi as the dev machine reaches it through its LAN IP;
+  /// `*.localhost` only resolves on the machine itself, so the internal
+  /// `/shop/<sub>` path is used instead of a subdomain that would fail there.
+  static bool get _isLocalDev {
+    final hostname = Uri.parse(webUrl).host;
+    return hostname == 'localhost' ||
+        hostname == '127.0.0.1' ||
+        hostname.endsWith('.localhost') ||
+        _isPrivateIp(hostname);
   }
 
-  /// Pretty address displayed to the seller, e.g. `techzone.macketttz.test`.
+  static bool _isPrivateIp(String hostname) {
+    return RegExp(r'^10\.\d+\.\d+\.\d+$').hasMatch(hostname) ||
+        RegExp(r'^192\.168\.\d+\.\d+$').hasMatch(hostname) ||
+        RegExp(r'^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$').hasMatch(hostname);
+  }
+
+  /// Address that opens a shop's storefront.
+  ///
+  /// On a developer machine it goes through `/shop/<sub>` on the LAN IP, the
+  /// only shape a phone can resolve. In production the subdomain is used, so
+  /// the seller and their customers read the same address.
+  static String shopUrl(String subdomain) {
+    if (subdomain.isEmpty) return webUrl;
+    final uri = Uri.parse(webUrl);
+
+    if (_isLocalDev) {
+      return '${uri.scheme}://${uri.authority}/shop/$subdomain';
+    }
+
+    return '${uri.scheme}://$subdomain.$shopDomain';
+  }
+
+  /// Pretty address displayed to the seller.
+  ///
+  /// Mirrors [shopUrl] in development so the link shown is the one that opens,
+  /// and stays the bare domain in production.
   static String shopDisplayUrl(String subdomain) {
     if (subdomain.isEmpty) return shopDomain;
+    if (_isLocalDev) return shopUrl(subdomain);
     return '$subdomain.$shopDomain';
   }
 }
