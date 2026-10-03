@@ -9,7 +9,6 @@ import '../models/shop_theme_config.dart';
 import '../models/user_model.dart';
 import '../services/api_client.dart';
 import '../services/market_api.dart';
-import '../services/theme_service.dart';
 
 /// Single source of truth for the app, backed entirely by the Nest API.
 ///
@@ -17,14 +16,12 @@ import '../services/theme_service.dart';
 /// shows a spinner or an error, because the previous in-memory behaviour (a
 /// synchronous `bool` that always succeeded) hid failures.
 class AppProvider extends ChangeNotifier {
-  AppProvider({ApiClient? client})
-      : _client = client ?? ApiClient() {
+  AppProvider({ApiClient? client}) : _client = client ?? ApiClient() {
     _api = MarketApi(_client);
   }
 
   final ApiClient _client;
   late final MarketApi _api;
-  final ThemeService _themeService = ThemeService();
 
   // ─── Session ───
 
@@ -94,7 +91,6 @@ class AppProvider extends ChangeNotifier {
     }
 
     await _loadCatalog();
-    await loadThemes();
 
     _booting = false;
     notifyListeners();
@@ -156,55 +152,20 @@ class AppProvider extends ChangeNotifier {
   // STOREFRONT THEMES
   // ═══════════════════════════════════
 
-  List<ShopTheme> _themes = [];
-  bool _themesLoading = false;
-
   /// The themes offered when creating or editing a shop.
-  List<ShopTheme> get themes => _themes;
-  bool get themesLoading => _themesLoading;
-
-  /// Theme used when the catalog cannot be fetched, so shop creation still
-  /// works without the storefront being reachable.
-  ShopTheme get fallbackTheme => _themes.isNotEmpty
-      ? _themes.first
-      : const ShopTheme(
-          id: 'atelier',
-          name: 'Atelier',
-          description: 'Serif et vert profond, très élégant',
-          previewImage: '',
-          swatch: ['#176b55', '#d6a85f', '#f7f5ef'],
-        );
-
-  /// Loads the catalog from the Next app. Safe to call more than once.
-  Future<void> loadThemes() async {
-    if (_themesLoading || _themes.isNotEmpty) return;
-    _themesLoading = true;
-    notifyListeners();
-
-    _themes = await _themeService.fetchThemes();
-    _themesLoading = false;
-    notifyListeners();
-  }
+  ///
+  /// Held in the app, not fetched: the picker and the preview must work before
+  /// the shop exists, and on a phone that may not reach the storefront server.
+  List<ShopTheme> get themes => storefrontThemes;
 
   /// Accent colour of a shop, taken from its theme.
-  Color themeColorOf(Shop shop) {
-    for (final theme in _themes) {
-      if (theme.id == shop.theme) return theme.primaryColor;
-    }
-    return fallbackTheme.primaryColor;
-  }
+  Color themeColorOf(Shop shop) => getStorefrontTheme(shop.theme).primaryColor;
 
   /// The catalog entry of a shop's theme, for its name and description.
-  ShopTheme? themeOf(Shop shop) {
-    for (final theme in _themes) {
-      if (theme.id == shop.theme) return theme;
-    }
-    return null;
-  }
+  ShopTheme themeOf(Shop shop) => getStorefrontTheme(shop.theme);
 
   @override
   void dispose() {
-    _themeService.dispose();
     _client.dispose();
     super.dispose();
   }

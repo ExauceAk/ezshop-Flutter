@@ -58,10 +58,12 @@ class MarketApi {
 
   final ApiClient _client;
 
-  /// Large enough that the whole catalog fits in one page: the app keeps its
-  /// existing client-side filtering, which would otherwise need a round trip
-  /// on every keystroke.
-  static const _catalogLimit = 200;
+  /// The API rejects a page size above 100, so the catalog is fetched in
+  /// several pages rather than one big request.
+  static const _pageSize = 100;
+
+  /// Upper bound on pages walked, so a wrong `total` cannot spin forever.
+  static const _maxPages = 20;
 
   // ─── Auth ───
 
@@ -142,28 +144,49 @@ class MarketApi {
 
   // ─── Catalog ───
 
-  Future<List<Product>> products() async {
-    final page = Paged.parse<Product>(
-      await _client.request(
+  Future<List<Product>> products() {
+    return _fetchAllPages<Product>(
+      (page) => _client.request(
         'GET',
         '/products',
-        query: {'limit': _catalogLimit},
+        query: {'limit': _pageSize, 'page': page},
       ),
       Product.fromJson,
     );
-    return page.items;
   }
 
-  Future<List<Product>> productsByShop(String shopId) async {
-    final page = Paged.parse<Product>(
-      await _client.request(
+  Future<List<Product>> productsByShop(String shopId) {
+    return _fetchAllPages<Product>(
+      (page) => _client.request(
         'GET',
         '/products/by-shop/$shopId',
-        query: {'limit': _catalogLimit},
+        query: {'limit': _pageSize, 'page': page},
       ),
       Product.fromJson,
     );
-    return page.items;
+  }
+
+  /// Walks every page of a paginated list endpoint and concatenates the rows.
+  ///
+  /// The app filters client-side, so it needs the whole catalog in memory; a
+  /// single large `limit` is not an option because the API caps it at 100.
+  Future<List<T>> _fetchAllPages<T>(
+    Future<dynamic> Function(int page) request,
+    T Function(Map<String, dynamic> row) fromJson,
+  ) async {
+    final collected = <T>[];
+
+    for (var page = 1; page <= _maxPages; page++) {
+      final parsed = Paged.parse<T>(await request(page), fromJson);
+      if (parsed.items.isEmpty) break;
+
+      collected.addAll(parsed.items);
+
+      // A short page was the last one.
+      if (parsed.items.length < _pageSize) break;
+    }
+
+    return collected;
   }
 
   Future<List<Category>> categories() async {

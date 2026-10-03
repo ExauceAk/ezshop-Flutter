@@ -122,13 +122,11 @@ class _EditShopScreenState extends State<EditShopScreen> {
 
     showThemePreview(
       context,
-      url: theme.previewUrl(
-        name: _nameController.text.trim(),
-        description: _descController.text.trim(),
-        slug: widget.shop.subdomain,
-        config: _currentConfig.previewParams,
-      ),
-      themeName: theme.name,
+      theme: theme,
+      name: _nameController.text,
+      description: _descController.text,
+      slug: widget.shop.subdomain,
+      config: _currentConfig,
       actionLabel: 'Appliquer ce thème',
       onSelect: () {
         setState(() => _selectedThemeId = theme.id);
@@ -219,9 +217,7 @@ class _EditShopScreenState extends State<EditShopScreen> {
       ),
       body: Consumer<AppProvider>(
         builder: (context, provider, _) {
-          final themes = provider.themes.isNotEmpty
-              ? provider.themes
-              : [provider.fallbackTheme];
+          final themes = provider.themes;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),

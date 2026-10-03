@@ -7,6 +7,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/home/main_scaffold.dart';
+import 'screens/shop/shop_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +37,9 @@ class MyApp extends StatelessWidget {
           '/signup': (_) => const SignupScreen(),
           '/forgot-password': (_) => const ForgotPasswordScreen(),
           '/home': (_) => const MainScaffold(),
+          // Reached from the "Ma Boutique" entry of the profile menu, which
+          // navigates by name.
+          '/shop': (_) => const ShopScreen(),
         },
       ),
     );

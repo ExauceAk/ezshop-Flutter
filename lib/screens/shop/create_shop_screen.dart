@@ -42,9 +42,9 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
   File? _bannerFile;
   final ImagePicker _picker = ImagePicker();
 
-  /// Customisations as typed so far, in the shape the preview URL expects.
-  Map<String, String> get _previewConfig {
-    final config = ShopThemeConfig(
+  /// Customisations as typed so far, rendered live by the preview.
+  ShopThemeConfig get _previewConfig {
+    return ShopThemeConfig(
       heroEyebrow: _heroEyebrowController.text.trim(),
       heroTitle: _heroTitleController.text.trim(),
       heroSubtitle: _heroSubtitleController.text.trim(),
@@ -52,7 +52,6 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
       aboutText: _aboutTextController.text.trim(),
       footerText: _footerTextController.text.trim(),
     );
-    return config.previewParams;
   }
 
   @override
@@ -98,17 +97,11 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
 
     showThemePreview(
       context,
-      url: theme.previewUrl(
-        name: _nameController.text.trim().isEmpty
-            ? 'Votre Boutique'
-            : _nameController.text.trim(),
-        description: _descController.text.trim().isEmpty
-            ? 'Description de la boutique'
-            : _descController.text.trim(),
-        slug: _subdomainController.text.trim(),
-        config: _previewConfig,
-      ),
-      themeName: theme.name,
+      theme: theme,
+      name: _nameController.text,
+      description: _descController.text,
+      slug: _subdomainController.text.trim(),
+      config: _previewConfig,
       onSelect: () {
         setState(() => _selectedThemeId = theme.id);
         Navigator.pop(context);
@@ -186,9 +179,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
       ),
       body: Consumer<AppProvider>(
         builder: (context, provider, _) {
-          final themes = provider.themes.isNotEmpty
-              ? provider.themes
-              : [provider.fallbackTheme];
+          final themes = provider.themes;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -400,19 +391,13 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
           style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textHint),
         ),
         const SizedBox(height: 12),
-        if (provider.themesLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else
-          SizedBox(
-            height: 168,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: themes.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) => _buildThemeCard(themes[index]),
+        SizedBox(
+          height: 168,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: themes.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) => _buildThemeCard(themes[index]),
             ),
           ),
       ],

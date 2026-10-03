@@ -114,15 +114,4 @@ class ShopThemeConfig {
     );
   }
 
-  /// Query parameters for the preview URL, matching the keys the Next
-  /// `/preview/[theme]` route reads.
-  Map<String, String> get previewParams => {
-        'heroEyebrow': heroEyebrow,
-        'heroTitle': heroTitle,
-        'heroSubtitle': heroSubtitle,
-        'heroImage': heroImageUrl,
-        'aboutTitle': aboutTitle,
-        'aboutText': aboutText,
-        'footerText': footerText,
-      };
-}
+  }
