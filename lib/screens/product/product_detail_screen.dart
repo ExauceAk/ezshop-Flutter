@@ -430,8 +430,8 @@ void _showNoWhatsApp() {
 
 /// Fullscreen image viewer opened from the carousel.
 ///
-/// The white veil under the status bar only stays while the picture is at rest:
-/// zooming fades it away so it does not sit on top of what is being looked at.
+/// No veil over the picture here: on a black background the photo is what the
+/// seller is looking at, and a fade would sit on top of the zoomed image.
 class _ProductGallery extends StatefulWidget {
   const _ProductGallery({
     required this.images,
@@ -450,7 +450,6 @@ class _ProductGallery extends StatefulWidget {
 class _ProductGalleryState extends State<_ProductGallery> {
   late final PageController _pageController = PageController(initialPage: widget.initialIndex);
   late int _index = widget.initialIndex;
-  bool _zoomed = false;
 
   @override
   void dispose() {
@@ -467,10 +466,6 @@ class _ProductGalleryState extends State<_ProductGallery> {
           itemCount: widget.images.length,
           onPageChanged: (index) => setState(() => _index = index),
           backgroundDecoration: const BoxDecoration(color: Colors.black),
-          scaleStateChangedCallback: (state) {
-            final zoomed = state != PhotoViewScaleState.initial;
-            if (zoomed != _zoomed) setState(() => _zoomed = zoomed);
-          },
           loadingBuilder: (_, event) => const Center(child: CircularProgressIndicator(color: Colors.white)),
           builder: (context, index) => PhotoViewGalleryPageOptions(
             imageProvider: NetworkImage(widget.images[index]),
@@ -492,15 +487,6 @@ class _ProductGalleryState extends State<_ProductGallery> {
               decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.35), shape: BoxShape.circle),
               child: const Icon(Icons.close_rounded, size: 20, color: Colors.white),
             ),
-          ),
-        ),
-
-        Positioned(
-          top: 0, left: 0, right: 0,
-          child: AnimatedOpacity(
-            opacity: _zoomed ? 0 : 1,
-            duration: const Duration(milliseconds: 180),
-            child: const TopFade(),
           ),
         ),
 
