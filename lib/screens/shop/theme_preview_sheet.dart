@@ -139,6 +139,9 @@ class _ThemePreviewSheet extends StatelessWidget {
               logoUrl: logoUrl,
               bannerUrl: bannerUrl,
               config: config,
+              // Shared with the draggable sheet: one gesture both scrolls the
+              // storefront and drags the sheet, instead of fighting over it.
+              scrollController: scrollController,
             ),
           ),
         ],

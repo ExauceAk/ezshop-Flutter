@@ -26,6 +26,7 @@ class StorefrontPreview extends StatelessWidget {
     this.bannerUrl = '',
     this.config = const ShopThemeConfig(),
     this.products = samplePreviewProducts,
+    this.scrollController,
   });
 
   final ShopTheme theme;
@@ -36,6 +37,10 @@ class StorefrontPreview extends StatelessWidget {
   final String bannerUrl;
   final ShopThemeConfig config;
   final List<PreviewProduct> products;
+
+  /// Scroll controller owned by the preview sheet, so dragging the sheet and
+  /// scrolling the storefront are the same gesture.
+  final ScrollController? scrollController;
 
   /// Falls back to the seller's defaults only when they left a field empty,
   /// exactly like `resolveContent` on the web.
@@ -73,20 +78,24 @@ class StorefrontPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(color: theme.background),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _Header(theme: theme, name: name, logoUrl: logoUrl),
-          _buildHero(),
-          if (theme.showStats) _Stats(theme: theme, products: products),
-          _Products(
-            theme: theme,
-            products: products,
-          ),
-          if (theme.showAbout)
-            _About(theme: theme, title: _aboutTitle, text: _aboutText),
-          _Footer(theme: theme, text: _footerText),
-        ],
+      child: SingleChildScrollView(
+        controller: scrollController,
+        // The storefront is wider than a phone in the desktop themes; letting
+        // it stay portrait keeps every section readable instead of scrolling
+        // sideways.
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Header(theme: theme, name: name, logoUrl: logoUrl),
+            _buildHero(),
+            if (theme.showStats) _Stats(theme: theme, products: products),
+            _Products(theme: theme, products: products),
+            if (theme.showAbout)
+              _About(theme: theme, title: _aboutTitle, text: _aboutText),
+            _Footer(theme: theme, text: _footerText),
+          ],
+        ),
       ),
     );
   }
@@ -172,34 +181,45 @@ class _Header extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       color: theme.isDark ? theme.surface : theme.background,
-      child: Row(
-        children: [
-          if (logoUrl.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(logoUrl, width: 28, height: 28, fit: BoxFit.cover),
-            )
-          else
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(color: theme.primary, borderRadius: BorderRadius.circular(8)),
-              child: Icon(Icons.storefront_rounded, size: 16, color: Colors.white),
-            ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _heading(theme, 17, weight: FontWeight.w700),
-            ),
-          ),
-          _NavLabel(theme: theme, label: 'Boutique'),
-          _NavLabel(theme: theme, label: 'À propos'),
-          const SizedBox(width: 6),
-          Icon(Icons.shopping_bag_outlined, size: 18, color: theme.textColor),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Below this width the links would squeeze the shop name out, so the
+          // header drops to logo + name + basket.
+          final showLinks = constraints.maxWidth >= 340;
+
+          return Row(
+            children: [
+              if (logoUrl.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(logoUrl, width: 28, height: 28, fit: BoxFit.cover),
+                )
+              else
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                      color: theme.primary, borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(Icons.storefront_rounded, size: 16, color: Colors.white),
+                ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _heading(theme, 17, weight: FontWeight.w700),
+                ),
+              ),
+              if (showLinks) ...[
+                _NavLabel(theme: theme, label: 'Boutique'),
+                _NavLabel(theme: theme, label: 'À propos'),
+              ],
+              const SizedBox(width: 6),
+              Icon(Icons.shopping_bag_outlined, size: 18, color: theme.textColor),
+            ],
+          );
+        },
       ),
     );
   }
@@ -584,12 +604,18 @@ class _Products extends StatelessWidget {
   final ShopTheme theme;
   final List<PreviewProduct> products;
 
+  /// A phone cannot show the 4 columns a desktop grid would; two keeps the
+  /// cards legible instead of squeezing them into slivers.
+  static const _phoneColumns = 2;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
-      child: theme.productLayout == ProductLayout.list
-          ? Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (theme.productLayout == ProductLayout.list) {
+            return Column(
               children: [
                 for (final product in products)
                   Padding(
@@ -597,23 +623,49 @@ class _Products extends StatelessWidget {
                     child: _ProductRow(theme: theme, product: product),
                   ),
               ],
-            )
-          : GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
-              // A phone is far narrower than the `columns` of a desktop grid,
-              // so the preview packs fewer per row rather than overflowing.
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: theme.columns > 3 ? 2 : 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.66,
+            );
+          }
+
+          const spacing = 12.0;
+          const columns = _phoneColumns;
+          final itemWidth = (constraints.maxWidth - spacing * (columns - 1)) / columns;
+          // The framed style insets the image, which adds to its box.
+          final inset = theme.cardStyle == CardStyle.framed ? 10.0 : 0.0;
+          final imageHeight = itemWidth / theme.imageAspectRatio + inset;
+          // Name line + price line, plus the card's own padding.
+          const textHeight = 58.0;
+
+          final rows = <Widget>[];
+          for (var start = 0; start < products.length; start += columns) {
+            final slice = products.sublist(
+              start,
+              (start + columns).clamp(0, products.length),
+            );
+            rows.add(
+              Padding(
+                padding: const EdgeInsets.only(bottom: spacing),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < columns; i++) ...[
+                      if (i > 0) const SizedBox(width: spacing),
+                      SizedBox(
+                        width: itemWidth,
+                        height: imageHeight + textHeight,
+                        child: i < slice.length
+                            ? _ProductCard(theme: theme, product: slice[i])
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              itemCount: products.length,
-              itemBuilder: (context, index) =>
-                  _ProductCard(theme: theme, product: products[index]),
-            ),
+            );
+          }
+
+          return Column(children: rows);
+        },
+      ),
     );
   }
 }
@@ -699,18 +751,25 @@ class _ProductCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: _body(theme, 11, weight: FontWeight.w600)),
                 const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Text(_formatPrice(product.price),
-                        style: _body(theme, 11, color: theme.primary, weight: FontWeight.w700)),
-                    if (product.oldPrice != null) ...[
-                      const SizedBox(width: 5),
-                      Text(_formatPrice(product.oldPrice!),
-                          style: _body(theme, 9, color: theme.muted).copyWith(
-                            decoration: TextDecoration.lineThrough,
-                          )),
+                // Cards are narrow on a phone: scale the price line down
+                // rather than letting a long amount with a struck-through
+                // original price overflow the card.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    children: [
+                      Text(_formatPrice(product.price),
+                          style: _body(theme, 11, color: theme.primary, weight: FontWeight.w700)),
+                      if (product.oldPrice != null) ...[
+                        const SizedBox(width: 5),
+                        Text(_formatPrice(product.oldPrice!),
+                            style: _body(theme, 9, color: theme.muted).copyWith(
+                              decoration: TextDecoration.lineThrough,
+                            )),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ],
             ),
