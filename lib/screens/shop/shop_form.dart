@@ -8,6 +8,7 @@ import '../../l10n/app_strings.dart';
 import '../../models/shop_theme.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_pick.dart';
+import '../../widgets/mini_theme_preview.dart';
 
 /// Everything the shop form collects.
 class ShopFormData {
@@ -23,8 +24,7 @@ class ShopFormData {
     this.slug = '',
     this.themeId = 'atelier',
     this.acceptsOnlinePayment = false,
-    this.paymentField1 = '',
-    this.paymentField5 = '',
+    this.paymentFields = const ['', '', '', '', ''],
     this.logoFile,
     this.bannerFile,
   });
@@ -45,18 +45,17 @@ class ShopFormData {
   final String slug;
   final String themeId;
 
-  /// Whether the shop takes payment on the storefront.
+  /// Whether the seller filled in the advanced options.
   ///
   /// Off by default: most sellers only negotiate on WhatsApp, and the extra
   /// fields must not appear before the seller asks for them.
   final bool acceptsOnlinePayment;
 
-  /// Placeholder for the payment details.
+  /// The five optional detail fields of the advanced section.
   ///
-  /// Only two of the planned fields are shown for now; their meaning and where
-  /// they are stored are still to be decided, so nothing is sent to the API.
-  final String paymentField1;
-  final String paymentField5;
+  /// Their meaning and where they are stored are still to be decided, so
+  /// nothing is sent to the API yet.
+  final List<String> paymentFields;
 
   /// Images picked during this session; null means "keep the existing one".
   final File? logoFile;
@@ -84,8 +83,7 @@ class ShopFormData {
     String? slug,
     String? themeId,
     bool? acceptsOnlinePayment,
-    String? paymentField1,
-    String? paymentField5,
+    List<String>? paymentFields,
     File? logoFile,
     File? bannerFile,
   }) {
@@ -101,8 +99,7 @@ class ShopFormData {
       slug: slug ?? this.slug,
       themeId: themeId ?? this.themeId,
       acceptsOnlinePayment: acceptsOnlinePayment ?? this.acceptsOnlinePayment,
-      paymentField1: paymentField1 ?? this.paymentField1,
-      paymentField5: paymentField5 ?? this.paymentField5,
+      paymentFields: paymentFields ?? this.paymentFields,
       logoFile: logoFile ?? this.logoFile,
       bannerFile: bannerFile ?? this.bannerFile,
     );
@@ -161,8 +158,10 @@ class _ShopFormState extends State<ShopForm> {
   late final TextEditingController _aboutTitle;
   late final TextEditingController _aboutText;
   late final TextEditingController _slug;
-  late final TextEditingController _payment1;
-  late final TextEditingController _payment5;
+
+  /// One controller per advanced field, so the five inputs keep their own text
+  /// while the section is hidden.
+  late final List<TextEditingController> _payments;
 
   @override
   void initState() {
@@ -175,8 +174,10 @@ class _ShopFormState extends State<ShopForm> {
     _aboutTitle = TextEditingController(text: _data.aboutTitle);
     _aboutText = TextEditingController(text: _data.aboutText);
     _slug = TextEditingController(text: _data.slug);
-    _payment1 = TextEditingController(text: _data.paymentField1);
-    _payment5 = TextEditingController(text: _data.paymentField5);
+    _payments = List.generate(
+      _data.paymentFields.length,
+      (index) => TextEditingController(text: _data.paymentFields[index]),
+    );
   }
 
   @override
@@ -189,17 +190,42 @@ class _ShopFormState extends State<ShopForm> {
       _aboutTitle,
       _aboutText,
       _slug,
-      _payment1,
-      _payment5,
     ]) {
+      controller.dispose();
+    }
+    for (final controller in _payments) {
       controller.dispose();
     }
     super.dispose();
   }
 
+  /// The theme currently picked in the grid.
+  ///
+  /// Falls back to the first catalog theme so the domain row always has
+  /// something to draw, even if the stored theme id is unknown.
+  ShopTheme get _currentTheme {
+    return widget.themes.firstWhere(
+      (theme) => theme.id == _data.themeId,
+      orElse: () => widget.themes.first,
+    );
+  }
+
   void _update(ShopFormData next) {
     setState(() => _data = next);
     widget.onChanged(next);
+  }
+
+  /// Returns the advanced fields with [index] set to [value].
+  ///
+  /// The list is rebuilt rather than mutated so [ShopFormData] stays a value
+  /// type and `copyWith` can tell "unchanged" from "cleared".
+  List<String> _replacePayment(int index, String value) {
+    final next = List<String>.of(_data.paymentFields);
+    while (next.length <= index) {
+      next.add('');
+    }
+    next[index] = value;
+    return next;
   }
 
   /// Picks an image and frames it before it is stored.
@@ -243,14 +269,16 @@ class _ShopFormState extends State<ShopForm> {
 
           _field(_name, l10n.t('form.name'), lines: 1),
           _phoneField(),
-          _field(
-            _slug,
-            l10n.t('form.domain'),
-            hint: l10n.t('form.domainHint'),
-            helper: l10n.t('form.domainHelper', {
-              'domain': _slug.text.isEmpty ? l10n.t('form.domainHint') : _slug.text,
-              'appDomain': AppConfig.shopDomain,
-            }),
+          // Domain and theme preview share a row: the subdomain is what the
+          // storefront will answer on, and the preview next to it shows what
+          // that storefront will look like.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _domainField()),
+              const SizedBox(width: 12),
+              MiniThemePreview(theme: _currentTheme, width: 92, height: 104),
+            ],
           ),
           const SizedBox(height: 12),
 
@@ -306,7 +334,7 @@ class _ShopFormState extends State<ShopForm> {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 1.1,
+              childAspectRatio: 0.82,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
@@ -345,10 +373,11 @@ class _ShopFormState extends State<ShopForm> {
     );
   }
 
-  /// Payment details, hidden until the seller opts in.
+  /// Optional details, hidden until the seller opts in.
   ///
-  /// The checkbox stays off by default: a shop that only sells on WhatsApp must
-  /// not look like it expects a card payment it never set up.
+  /// This is an advanced section, not a payment promise: the fields are place
+  /// holders whose meaning is still undecided, so it stays collapsed by default
+  /// and a shop that only sells on WhatsApp is never asked about it.
   Widget _paymentSection() {
     final l10n = context.l10n;
 
@@ -382,12 +411,46 @@ class _ShopFormState extends State<ShopForm> {
         ),
         if (_data.acceptsOnlinePayment) ...[
           const SizedBox(height: 16),
-          _field(_payment1, l10n.t('form.payment.field1'),
-              hint: l10n.t('form.payment.hint'), lines: 1),
-          _field(_payment5, l10n.t('form.payment.field5'),
-              hint: l10n.t('form.payment.hint'), lines: 1),
+          // All five fields, numbered as they will appear on the storefront.
+          for (var i = 0; i < _payments.length; i++)
+            _field(
+              _payments[i],
+              l10n.t('form.payment.field${i + 1}'),
+              hint: l10n.t('form.payment.hint'),
+              lines: 1,
+              fieldIndex: i,
+            ),
         ],
       ],
+    );
+  }
+
+  /// Subdomain entry, with the fixed platform suffix on the same line.
+  ///
+  /// The seller only ever types the part they choose, so the suffix is shown
+  /// inline instead of asking them to remember it; the helper underneath still
+  /// spells out the full address that will actually open.
+  Widget _domainField() {
+    final l10n = context.l10n;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: _slug,
+        maxLines: 1,
+        decoration: InputDecoration(
+          labelText: l10n.t('form.domain'),
+          hintText: l10n.t('form.domainHint'),
+          suffixText: AppConfig.shopSuffix,
+          suffixStyle: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+          helperText: l10n.t('form.domainHelper', {
+            'domain': _slug.text.isEmpty ? l10n.t('form.domainHint') : _slug.text,
+            'appDomain': AppConfig.shopDomain,
+          }),
+          helperMaxLines: 2,
+        ),
+        onChanged: (value) => _update(_data.copyWith(slug: value)),
+      ),
     );
   }
 
@@ -398,6 +461,7 @@ class _ShopFormState extends State<ShopForm> {
     String? hint,
     String? helper,
     TextInputType? keyboard,
+    int? fieldIndex,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -419,8 +483,9 @@ class _ShopFormState extends State<ShopForm> {
               heroSubtitle: controller == _heroSubtitle ? value : null,
               aboutTitle: controller == _aboutTitle ? value : null,
               aboutText: controller == _aboutText ? value : null,
-              paymentField1: controller == _payment1 ? value : null,
-              paymentField5: controller == _payment5 ? value : null,
+              paymentFields: fieldIndex == null
+                  ? null
+                  : _replacePayment(fieldIndex, value),
             )),
       ),
     );
@@ -623,22 +688,15 @@ class _ThemeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: List.generate(
-                theme.swatch.length,
-                (index) => Container(
-                  width: 16,
-                  height: 16,
-                  margin: const EdgeInsets.only(right: 4),
-                  decoration: BoxDecoration(
-                    color: theme.colorAt(index),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.black12),
-                  ),
-                ),
+            // Real miniature instead of colour dots: the dots were identical
+            // from one theme to the next, so the card said nothing about the
+            // hero shape or product layout the seller is actually choosing.
+            Expanded(
+              child: Center(
+                child: MiniThemePreview(theme: theme, width: 86, height: 86),
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 8),
             Text(
               theme.name,
               maxLines: 1,

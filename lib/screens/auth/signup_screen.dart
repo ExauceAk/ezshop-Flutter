@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../settings/privacy_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -18,6 +20,9 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+
+  /// Consent to the privacy policy and to the account deletion terms.
+  bool _acceptedTerms = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   bool _isLoading = false;
@@ -33,6 +38,23 @@ class _SignupScreenState extends State<SignupScreen> {
 
   void _handleSignup() async {
     if (!_formKey.currentState!.validate()) return;
+    // The privacy policy and the account deletion are part of the terms, and
+    // an app store reviewer looks for exactly this: the consent is explicit
+    // and it blocks the signup, it is not a decorative checkbox.
+    if (!_acceptedTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.t('signup.termsRequired'),
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: AppTheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
     setState(() => _isLoading = true);
     final provider = context.read<AppProvider>();
     final success = await provider.signup(
@@ -164,7 +186,58 @@ class _SignupScreenState extends State<SignupScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
+              // Consent row, above the button: the box is small, the link opens
+              // the public policy, and the button stays disabled until it is
+              // ticked.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Checkbox(
+                      value: _acceptedTerms,
+                      onChanged: (value) =>
+                          setState(() => _acceptedTerms = value ?? false),
+                      activeColor: AppTheme.primary,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => launchUrl(
+                        PrivacyScreen.policyUrl,
+                        mode: LaunchMode.externalApplication,
+                      ),
+                      child: RichText(
+                        text: TextSpan(
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: AppTheme.textSecondary,
+                            height: 1.4,
+                          ),
+                          children: [
+                            TextSpan(text: context.l10n.t('signup.termsPrefix')),
+                            TextSpan(
+                              text: context.l10n.t('signup.termsLink'),
+                              style: GoogleFonts.poppins(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                            TextSpan(text: context.l10n.t('signup.termsSuffix')),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 height: 56,

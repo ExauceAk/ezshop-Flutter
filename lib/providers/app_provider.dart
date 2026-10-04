@@ -10,6 +10,7 @@ import '../models/order_model.dart';
 import '../models/notification_model.dart';
 import '../models/product_model.dart';
 import '../models/shop_model.dart';
+import '../models/shop_removal_preview.dart';
 import '../models/shop_theme.dart';
 import '../models/shop_theme_config.dart';
 import '../models/user_model.dart';
@@ -861,6 +862,60 @@ Future<void> loadNotifications() async {
       if (removed != null) {
         _products = [..._products]..insert(index, removed);
       }
+      _dataError = e.errors?.values.firstOrNull ?? e.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Deletes the account and everything attached to it.
+  ///
+  /// [password] proves the caller owns the account. On success the session is
+  /// dropped and the in-memory lists cleared, so the app returns to the login
+  /// screen instead of showing an account that no longer exists.
+  Future<bool> deleteAccount(String password) async {
+    try {
+      await _api.deleteAccount(password);
+      await logout();
+      _shops = [];
+      _products = [];
+      _notifications = [];
+      _dataError = null;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _dataError = e.errors?.values.firstOrNull ?? e.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+/// What deleting [shopId] would remove: products, orders and ratings.
+  ///
+  /// Returned so the caller can warn with real numbers instead of a generic
+  /// "are you sure?".
+  Future<ShopRemovalPreview> shopRemovalPreview(String shopId) async {
+    return _api.shopRemovalPreview(shopId);
+  }
+
+  /// Deletes a shop and everything attached to it.
+  ///
+  /// The API cascades over the products, orders and ratings, and over the
+  /// favourites and cart lines pointing at those products, so the local lists
+  /// are pruned the same way rather than left showing a shop that no longer
+  /// exists. On failure nothing is removed locally, which is why the API call
+  /// comes first.
+  Future<bool> deleteShop(String shopId) async {
+    try {
+      await _api.deleteShop(shopId);
+      _shops = _shops.where((s) => s.id != shopId).toList();
+      _products = _products.where((p) => p.shopId != shopId).toList();
+      _orders =
+          _orders.where((o) => o.shopId != shopId).toList();
+      _dataError = null;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
       _dataError = e.errors?.values.firstOrNull ?? e.message;
       notifyListeners();
       return false;

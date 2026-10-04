@@ -12,6 +12,7 @@ import '../settings/about_screen.dart';
 import '../settings/help_screen.dart';
 import '../settings/language_screen.dart';
 import '../settings/notifications_screen.dart';
+import '../settings/privacy_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -265,6 +266,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              ),
+            ),
+            _buildDivider(),
+            _buildSettingsItem(
+              Icons.privacy_tip_outlined,
+              context.l10n.t('privacy.title'),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PrivacyScreen()),
               ),
             ),
             _buildDivider(),

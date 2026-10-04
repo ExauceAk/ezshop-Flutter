@@ -10,6 +10,7 @@ import '../models/order_model.dart';
 import '../models/notification_model.dart';
 import '../models/product_model.dart';
 import '../models/shop_model.dart';
+import '../models/shop_removal_preview.dart';
 import '../models/user_model.dart';
 import 'api_client.dart';
 
@@ -281,6 +282,14 @@ class MarketApi {
     return data.whereType<Map<String, dynamic>>().map(Shop.fromJson).toList();
   }
 
+  /// Deletes the signed-in account for good.
+  ///
+  /// The password is sent as proof of ownership: the deletion cannot be undone,
+  /// so a stolen token alone must not be able to destroy someone's shop.
+  Future<void> deleteAccount(String password) async {
+    await _client.request('DELETE', '/users/me', body: {'password': password});
+  }
+
   Future<Shop> createShop({
     required String name,
     String description = '',
@@ -328,6 +337,18 @@ class MarketApi {
 
     final data = await _client.request('PATCH', '/shops/$shopId', body: body);
     return Shop.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// What deleting the shop would remove: its products, its orders and its
+  /// ratings. Read before the confirmation so the seller sees the real count
+  /// instead of a vague warning.
+  Future<ShopRemovalPreview> shopRemovalPreview(String shopId) async {
+    final data = await _client.request('GET', '/shops/$shopId/removal-preview');
+    return ShopRemovalPreview.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteShop(String shopId) async {
+    await _client.request('DELETE', '/shops/$shopId');
   }
 
   Future<Product> createProduct({

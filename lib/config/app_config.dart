@@ -31,6 +31,16 @@ class AppConfig {
     defaultValue: 'macketttz.test',
   );
 
+  /// Fixed suffix shown at the end of the domain field while the seller types.
+  ///
+  /// Separate from [shopDomain] on purpose: the apex used for local testing is
+  /// a LAN placeholder, while this is the suffix the deployed platform will
+  /// serve, so one can change without the other.
+  static const String shopSuffix = String.fromEnvironment(
+    'SHOP_SUFFIX',
+    defaultValue: '.ezshop.test',
+  );
+
   /// Address that opens a shop's storefront.
   ///
   /// The subdomain is put in front of the storefront host: `couz.localhost:3000`

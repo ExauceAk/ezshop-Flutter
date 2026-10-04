@@ -7,6 +7,8 @@ import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/shop_model.dart';
+import '../../models/shop_removal_preview.dart';
+import '../../services/api_client.dart';
 import '../../models/product_model.dart';
 import '../../models/order_model.dart';
 import '../product/product_detail_screen.dart';
@@ -673,6 +675,9 @@ class _ShopScreenState extends State<ShopScreen> {
               ),
               _buildReceivedOrders(provider, shop),
 
+              // ─── Danger zone: only for the shop's own seller ───
+              if (_isOwner(shop)) _buildDangerZone(shop),
+
               // ─── Closing space, so the last card is not flush with the edge ───
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ],
@@ -683,7 +688,121 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
-  // ─── Orders buyers placed for the products of this shop ───
+  /// Whether the signed-in user owns this shop.
+///
+/// Deleting is offered only to the owner: the API refuses anyone else, and
+/// showing a red button to a visitor who cannot use it is just a dead end.
+bool _isOwner(Shop shop) {
+  final user = context.read<AppProvider>().currentUser;
+  return user != null && shop.ownerId == user.id;
+}
+
+/// The delete button, kept at the bottom of the page rather than in the
+/// header: it is destructive, and a slip of the thumb on a phone should not be
+/// able to remove a whole shop.
+Widget _buildDangerZone(Shop shop) {
+  final l10n = context.l10n;
+
+  return SliverToBoxAdapter(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 32, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.t('shop.detail.danger.title'),
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textHint,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _confirmDeleteShop(shop),
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: Text(l10n.t('shop.detail.danger.delete')),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.error,
+                side: const BorderSide(color: AppTheme.error),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Asks before deleting the shop, saying exactly what goes with it.
+///
+/// Two steps on purpose: the counts are fetched first so the dialog can name
+/// them, because "your products will be deleted" is not the same warning as
+/// "12 products and 3 orders will be deleted". The dialog then asks for the
+/// shop name to be typed, which is the only confirmation that survives a
+/// mis-tap on the second dialog too.
+Future<void> _confirmDeleteShop(Shop shop) async {
+  final l10n = context.l10n;
+  final provider = context.read<AppProvider>();
+  final messenger = ScaffoldMessenger.of(context);
+
+  // The counts come from the API so the warning cannot drift from what will
+  // actually be removed.
+  ShopRemovalPreview? preview;
+  try {
+    preview = await provider.shopRemovalPreview(shop.id);
+  } on ApiException {
+    preview = null;
+  }
+  if (!mounted) return;
+
+  final nameController = TextEditingController();
+  final typed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => _DeleteShopDialog(
+      shop: shop,
+      preview: preview,
+      nameController: nameController,
+    ),
+  );
+  nameController.dispose();
+  if (typed != true || !mounted) return;
+
+  final deleted = await provider.deleteShop(shop.id);
+  if (!mounted) return;
+
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(
+        deleted
+            ? l10n.t('shop.detail.danger.done')
+            : (provider.dataError ?? l10n.t('shop.detail.danger.failed')),
+        style: GoogleFonts.poppins(),
+      ),
+      backgroundColor: deleted ? AppTheme.success : AppTheme.error,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
+  );
+
+  if (!deleted || !mounted) return;
+
+  // The shop is gone: leave its page instead of showing an empty shell.
+  if (mounted) setState(() => _selectedShop = null);
+  if (mounted) Navigator.of(context).maybePop();
+}
+
+// ─── Orders buyers placed for the products of this shop ───
   ///
   /// Shows who ordered, what, and since when: the seller needs that to answer
   /// on WhatsApp, which is where the deal actually happens.
@@ -1036,4 +1155,161 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
+}
+
+/// Confirmation dialog for the shop deletion.
+///
+/// States what the cascade will remove, with real counts, and only enables the
+/// confirm button once the shop name has been typed: a shop is the seller's
+/// whole storefront, and the mistake is not recoverable from inside the app.
+class _DeleteShopDialog extends StatefulWidget {
+  const _DeleteShopDialog({
+    required this.shop,
+    required this.preview,
+    required this.nameController,
+  });
+
+  final Shop shop;
+
+  /// Null when the counts could not be fetched; the dialog then warns without
+  /// quoting numbers rather than inventing them.
+  final ShopRemovalPreview? preview;
+
+  final TextEditingController nameController;
+
+  @override
+  State<_DeleteShopDialog> createState() => _DeleteShopDialogState();
+}
+
+class _DeleteShopDialogState extends State<_DeleteShopDialog> {
+  bool _canConfirm = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.nameController.addListener(_onTyped);
+  }
+
+  @override
+  void dispose() {
+    widget.nameController.removeListener(_onTyped);
+    super.dispose();
+  }
+
+  void _onTyped() {
+    final matches = widget.nameController.text.trim() == widget.shop.name;
+    if (matches != _canConfirm) setState(() => _canConfirm = matches);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final preview = widget.preview;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: AppTheme.error, size: 22),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l10n.t('shop.detail.delete.title'),
+              style: GoogleFonts.poppins(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              l10n.t('shop.detail.delete.body', {'name': widget.shop.name}),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 14),
+            if (preview == null)
+              Text(
+                l10n.t('shop.detail.delete.unknownCounts'),
+                style: GoogleFonts.poppins(fontSize: 13, color: AppTheme.error),
+              )
+            else ...[
+              _row(
+                Icons.inventory_2_outlined,
+                l10n.t('shop.detail.delete.products', {'count': '${preview.productCount}'}),
+              ),
+              _row(
+                Icons.receipt_long_outlined,
+                l10n.t('shop.detail.delete.orders', {'count': '${preview.orderCount}'}),
+              ),
+              _row(
+                Icons.star_outline_rounded,
+                l10n.t('shop.detail.delete.ratings', {'count': '${preview.ratingCount}'}),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Text(
+              l10n.t('shop.detail.delete.confirmLabel', {'name': widget.shop.name}),
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: widget.nameController,
+              autocorrect: false,
+              decoration: InputDecoration(
+                hintText: widget.shop.name,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onChanged: (_) => _onTyped(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(l10n.t('common.cancel')),
+        ),
+        TextButton(
+          // Disabled until the name matches, so the dialog cannot be dismissed
+          // by an accidental tap on the wrong button.
+          onPressed: _canConfirm ? () => Navigator.pop(context, true) : null,
+          child: Text(
+            l10n.t('shop.detail.delete.confirm'),
+            style: const TextStyle(color: AppTheme.error),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _row(IconData icon, String label) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          children: [
+            Icon(icon, size: 17, color: AppTheme.textSecondary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.poppins(fontSize: 13.5),
+              ),
+            ),
+          ],
+        ),
+      );
 }
