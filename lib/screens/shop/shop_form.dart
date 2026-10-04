@@ -2,11 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../config/app_config.dart';
+import '../../l10n/app_strings.dart';
 import '../../models/shop_theme.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/image_pick.dart';
 
 /// Everything the shop form collects.
 class ShopFormData {
@@ -21,6 +22,9 @@ class ShopFormData {
     this.aboutText = '',
     this.slug = '',
     this.themeId = 'atelier',
+    this.acceptsOnlinePayment = false,
+    this.paymentField1 = '',
+    this.paymentField5 = '',
     this.logoFile,
     this.bannerFile,
   });
@@ -40,6 +44,19 @@ class ShopFormData {
   final String aboutText;
   final String slug;
   final String themeId;
+
+  /// Whether the shop takes payment on the storefront.
+  ///
+  /// Off by default: most sellers only negotiate on WhatsApp, and the extra
+  /// fields must not appear before the seller asks for them.
+  final bool acceptsOnlinePayment;
+
+  /// Placeholder for the payment details.
+  ///
+  /// Only two of the planned fields are shown for now; their meaning and where
+  /// they are stored are still to be decided, so nothing is sent to the API.
+  final String paymentField1;
+  final String paymentField5;
 
   /// Images picked during this session; null means "keep the existing one".
   final File? logoFile;
@@ -66,6 +83,9 @@ class ShopFormData {
     String? aboutText,
     String? slug,
     String? themeId,
+    bool? acceptsOnlinePayment,
+    String? paymentField1,
+    String? paymentField5,
     File? logoFile,
     File? bannerFile,
   }) {
@@ -80,6 +100,9 @@ class ShopFormData {
       aboutText: aboutText ?? this.aboutText,
       slug: slug ?? this.slug,
       themeId: themeId ?? this.themeId,
+      acceptsOnlinePayment: acceptsOnlinePayment ?? this.acceptsOnlinePayment,
+      paymentField1: paymentField1 ?? this.paymentField1,
+      paymentField5: paymentField5 ?? this.paymentField5,
       logoFile: logoFile ?? this.logoFile,
       bannerFile: bannerFile ?? this.bannerFile,
     );
@@ -127,7 +150,6 @@ class ShopForm extends StatefulWidget {
 
 class _ShopFormState extends State<ShopForm> {
   late ShopFormData _data;
-  final ImagePicker _picker = ImagePicker();
 
   /// Prefixes offered for the phone number.
   static const _countryCodes = ['221', '225', '223', '226', '237', '33', '1'];
@@ -139,6 +161,8 @@ class _ShopFormState extends State<ShopForm> {
   late final TextEditingController _aboutTitle;
   late final TextEditingController _aboutText;
   late final TextEditingController _slug;
+  late final TextEditingController _payment1;
+  late final TextEditingController _payment5;
 
   @override
   void initState() {
@@ -151,6 +175,8 @@ class _ShopFormState extends State<ShopForm> {
     _aboutTitle = TextEditingController(text: _data.aboutTitle);
     _aboutText = TextEditingController(text: _data.aboutText);
     _slug = TextEditingController(text: _data.slug);
+    _payment1 = TextEditingController(text: _data.paymentField1);
+    _payment5 = TextEditingController(text: _data.paymentField5);
   }
 
   @override
@@ -163,6 +189,8 @@ class _ShopFormState extends State<ShopForm> {
       _aboutTitle,
       _aboutText,
       _slug,
+      _payment1,
+      _payment5,
     ]) {
       controller.dispose();
     }
@@ -174,14 +202,19 @@ class _ShopFormState extends State<ShopForm> {
     widget.onChanged(next);
   }
 
+  /// Picks an image and frames it before it is stored.
+  ///
+  /// The logo is cropped square because the storefront shows it in a circle,
+  /// and the banner is cropped wide because it fills the hero; an uncropped
+  /// photo is stretched to fit and loses whatever the seller wanted to show.
   Future<void> _pick({required bool isLogo}) async {
-    final image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1600,
-      maxHeight: 1600,
+    final l10n = context.l10n;
+    final file = await pickAndCropImage(
+      context,
+      aspectRatio: isLogo ? 1 : 16 / 9,
+      title: isLogo ? l10n.t('crop.logo') : l10n.t('crop.cover'),
     );
-    if (image == null) return;
-    final file = File(image.path);
+    if (file == null) return;
     _update(isLogo
         ? _data.copyWith(logoFile: file)
         : _data.copyWith(bannerFile: file));
@@ -189,12 +222,14 @@ class _ShopFormState extends State<ShopForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _label('Logo'),
+          _label(l10n.t('form.logo')),
           const SizedBox(height: 8),
           _ImageSlot(
             height: 92,
@@ -206,26 +241,28 @@ class _ShopFormState extends State<ShopForm> {
           ),
           const SizedBox(height: 24),
 
-          _field(_name, 'Nom de la boutique', lines: 1),
+          _field(_name, l10n.t('form.name'), lines: 1),
           _phoneField(),
           _field(
             _slug,
-            'Nom de domaine',
-            hint: 'maboutique',
-            helper: 'Votre boutique sera visible sur '
-                '${_slug.text.isEmpty ? 'maboutique' : _slug.text}.${AppConfig.shopDomain}',
+            l10n.t('form.domain'),
+            hint: l10n.t('form.domainHint'),
+            helper: l10n.t('form.domainHelper', {
+              'domain': _slug.text.isEmpty ? l10n.t('form.domainHint') : _slug.text,
+              'appDomain': AppConfig.shopDomain,
+            }),
           ),
           const SizedBox(height: 12),
 
-          _sectionTitle('Section de couverture'),
-          _field(_heroTitle, 'Titre principal', lines: 1),
+          _sectionTitle(l10n.t('form.coverSection')),
+          _field(_heroTitle, l10n.t('form.heroTitle'), lines: 1),
           _field(
             _heroSubtitle,
-            'Description',
-            hint: 'Ce que vous vendez, en une phrase',
+            l10n.t('form.heroDescription'),
+            hint: l10n.t('form.heroDescriptionHint'),
             lines: 3,
           ),
-          _label('Image de couverture'),
+          _label(l10n.t('form.coverImage')),
           const SizedBox(height: 8),
           _ImageSlot(
             height: 110,
@@ -236,47 +273,121 @@ class _ShopFormState extends State<ShopForm> {
           ),
           const SizedBox(height: 28),
 
-          _sectionTitle('Section à propos'),
-          _field(_aboutTitle, 'Titre', lines: 1),
+          _sectionTitle(l10n.t('form.aboutSection')),
+          _field(_aboutTitle, l10n.t('form.aboutTitle'), lines: 1),
           _field(
             _aboutText,
-            'Texte',
-            hint: 'Votre histoire, votre savoir-faire',
+            l10n.t('form.aboutText'),
+            hint: l10n.t('form.aboutTextHint'),
             lines: 4,
           ),
+          const SizedBox(height: 8),
+
+          _paymentSection(),
           const SizedBox(height: 20),
 
           Row(
             children: [
-              _label('Thème'),
+              _label(l10n.t('form.theme')),
               const Spacer(),
               TextButton.icon(
                 onPressed: widget.onPreview,
                 icon: const Icon(Icons.visibility_rounded, size: 18),
-                label: const Text('Aperçu'),
+                label: Text(l10n.t('form.preview')),
                 style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 150,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: widget.themes.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
+          // Vertical grid: the catalog now holds fifteen themes, and a single
+          // horizontal strip hid ten of them behind a swipe nobody makes.
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1.1,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: widget.themes.length + lockedStorefrontThemes.length,
+            itemBuilder: (context, index) {
+              if (index < widget.themes.length) {
                 final theme = widget.themes[index];
                 return _ThemeCard(
                   theme: theme,
                   selected: theme.id == _data.themeId,
                   onTap: () => _update(_data.copyWith(themeId: theme.id)),
                 );
-              },
-            ),
+              }
+              final locked = lockedStorefrontThemes[index - widget.themes.length];
+              return _LockedThemeCard(
+                theme: locked,
+                onTap: () => ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        l10n.t('theme.comingSoon', {'name': locked.name}),
+                        style: GoogleFonts.poppins(),
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+              );
+            },
           ),
         ],
       ),
+    );
+  }
+
+  /// Payment details, hidden until the seller opts in.
+  ///
+  /// The checkbox stays off by default: a shop that only sells on WhatsApp must
+  /// not look like it expects a card payment it never set up.
+  Widget _paymentSection() {
+    final l10n = context.l10n;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(l10n.t('form.payment.section')),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _data.acceptsOnlinePayment
+                  ? AppTheme.primary
+                  : AppTheme.border,
+            ),
+          ),
+          child: CheckboxListTile(
+            value: _data.acceptsOnlinePayment,
+            onChanged: (value) =>
+                _update(_data.copyWith(acceptsOnlinePayment: value ?? false)),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            activeColor: AppTheme.primary,
+            title: Text(
+              l10n.t('form.payment.checkbox'),
+              style: GoogleFonts.poppins(fontSize: 14),
+            ),
+          ),
+        ),
+        if (_data.acceptsOnlinePayment) ...[
+          const SizedBox(height: 16),
+          _field(_payment1, l10n.t('form.payment.field1'),
+              hint: l10n.t('form.payment.hint'), lines: 1),
+          _field(_payment5, l10n.t('form.payment.field5'),
+              hint: l10n.t('form.payment.hint'), lines: 1),
+        ],
+      ],
     );
   }
 
@@ -308,6 +419,8 @@ class _ShopFormState extends State<ShopForm> {
               heroSubtitle: controller == _heroSubtitle ? value : null,
               aboutTitle: controller == _aboutTitle ? value : null,
               aboutText: controller == _aboutText ? value : null,
+              paymentField1: controller == _payment1 ? value : null,
+              paymentField5: controller == _payment5 ? value : null,
             )),
       ),
     );
@@ -359,9 +472,9 @@ class _ShopFormState extends State<ShopForm> {
             child: TextFormField(
               controller: _whatsapp,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Numéro WhatsApp',
-                hintText: '77 000 00 00',
+              decoration: InputDecoration(
+                labelText: context.l10n.t('form.whatsapp'),
+                hintText: context.l10n.t('form.whatsappHint'),
               ),
               onChanged: (value) =>
                   _update(_data.copyWith(whatsapp: value)),
@@ -474,7 +587,7 @@ class _Placeholder extends StatelessWidget {
         const Icon(Icons.camera_alt_rounded, color: AppTheme.textHint, size: 24),
         const SizedBox(height: 4),
         Text(
-          'Choisir',
+          context.l10n.t('form.choose'),
           style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textHint),
         ),
       ],
@@ -498,7 +611,6 @@ class _ThemeCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 140,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -547,6 +659,67 @@ class _ThemeCard extends StatelessWidget {
                 height: 1.3,
                 color: AppTheme.textHint,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+/// A theme that is announced but not built yet.
+///
+/// Greyed out, without palette or preview image, so nothing about it can be
+/// mistaken for a theme the storefront already renders. Tapping only says when
+/// it is coming.
+class _LockedThemeCard extends StatelessWidget {
+  const _LockedThemeCard({required this.theme, required this.onTap});
+
+  final LockedShopTheme theme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2F2F4),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 26,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.lock_outline_rounded,
+                  size: 16,
+                  color: AppTheme.textHint,
+                ),
+              ),
+            ),
+            const Spacer(),
+            Text(
+              theme.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              context.l10n.t('theme.locked'),
+              style: GoogleFonts.poppins(fontSize: 10, color: AppTheme.textHint),
             ),
           ],
         ),

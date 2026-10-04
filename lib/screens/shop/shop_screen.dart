@@ -3,16 +3,20 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/shop_model.dart';
 import '../../models/product_model.dart';
+import '../../models/order_model.dart';
 import '../product/product_detail_screen.dart';
+import '../common/coming_soon_screen.dart';
 import 'add_product_screen.dart';
 import 'create_shop_screen.dart';
 import 'edit_shop_screen.dart';
 import 'shop_webview_screen.dart';
 import '../../config/app_config.dart';
+import '../../utils/price_format.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -83,10 +87,11 @@ class _ShopScreenState extends State<ShopScreen> {
               ],
             ),
             const SizedBox(height: 32),
-            Text('Aucune boutique', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800)),
+            Text(context.l10n.t('shop.list.empty'),
+                style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             Text(
-              'Vous n\'avez pas encore de boutique.\nCréez-la en quelques secondes !',
+              context.l10n.t('shop.list.emptySubtitle'),
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(fontSize: 14, color: AppTheme.textSecondary, height: 1.5),
             ),
@@ -96,7 +101,8 @@ class _ShopScreenState extends State<ShopScreen> {
               child: ElevatedButton.icon(
                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateShopScreen())),
                 icon: const Icon(Icons.add_rounded, size: 22),
-                label: Text('Créer ma première boutique', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15)),
+                label: Text(context.l10n.t('shop.list.createFirst'),
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15)),
               ),
             ),
           ],
@@ -109,6 +115,8 @@ class _ShopScreenState extends State<ShopScreen> {
   //  SHOP LIST
   // ═══════════════════════════════════════
   Widget _buildShopListView(List<Shop> shops, AppProvider provider) {
+    final l10n = context.l10n;
+
     return Column(
       children: [
         // ─── Hero banner (same purple artwork as the shop detail) ───
@@ -139,7 +147,7 @@ class _ShopScreenState extends State<ShopScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Mes Boutiques',
+                        Text(l10n.t('shop.list.title'),
                             maxLines: 1, overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
                         const SizedBox(height: 2),
@@ -175,7 +183,8 @@ class _ShopScreenState extends State<ShopScreen> {
             child: OutlinedButton.icon(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateShopScreen())),
               icon: const Icon(Icons.add_rounded, size: 20),
-              label: Text('Nouvelle boutique', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15)),
+              label: Text(context.l10n.t('shop.list.new'),
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.primary,
                 side: const BorderSide(color: AppTheme.primary, width: 1.5),
@@ -195,7 +204,13 @@ class _ShopScreenState extends State<ShopScreen> {
     final themeLabel = theme?.name ?? shop.theme;
 
     return GestureDetector(
-      onTap: () => setState(() => _selectedShop = shop),
+      onTap: () {
+        setState(() => _selectedShop = shop);
+        // Counters and received orders are only needed on the detail screen, so
+        // they are fetched here instead of with the shop list.
+        provider.loadShopStats(shop.id);
+        provider.loadShopOrders(shop.id);
+      },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -337,6 +352,7 @@ class _ShopScreenState extends State<ShopScreen> {
   //  SHOP DETAIL (new design)
   // ═══════════════════════════════════════
   Widget _buildShopDetailView(Shop shop, AppProvider provider) {
+    final l10n = context.l10n;
     final shopProducts = provider.getProductsByShop(shop.id);
     final accent = provider.themeColorOf(shop);
     final theme = provider.themeOf(shop);
@@ -461,19 +477,8 @@ class _ShopScreenState extends State<ShopScreen> {
                                             Text(shop.name,
                                                 style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
                                             const SizedBox(height: 4),
-                                            Text('${shop.productCount} produits • Note ${shop.rating}',
+                                            Text('${shop.productCount} produits',
                                                 style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withOpacity(0.85))),
-                                            const SizedBox(height: 4),
-                                            // Star rating
-                                            Row(
-                                              children: List.generate(5, (i) {
-                                                return Icon(
-                                                  i < shop.rating.round() ? Icons.star_rounded : Icons.star_outline_rounded,
-                                                  color: const Color(0xFFFFD700),
-                                                  size: 18,
-                                                );
-                                              }),
-                                            ),
                                           ],
                                         ),
                                       ),
@@ -487,11 +492,15 @@ class _ShopScreenState extends State<ShopScreen> {
                                         _buildDetailMetaChip(
                                           Icons.language_rounded,
                                           AppConfig.shopDisplayUrl(shop.subdomain),
-                                          'Voir la boutique',
+                                          l10n.t('shop.detail.viewShop'),
                                           onTap: () => _openShopWebView(shop),
                                         ),
                                       if (shop.subdomain.isNotEmpty) const SizedBox(width: 10),
-                                      _buildDetailMetaChip(Icons.palette_rounded, theme?.name ?? shop.theme, 'Thème actif'),
+                                      _buildDetailMetaChip(
+                                        Icons.palette_rounded,
+                                        theme?.name ?? shop.theme,
+                                        l10n.t('shop.detail.themeActive'),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -505,55 +514,47 @@ class _ShopScreenState extends State<ShopScreen> {
                 ),
               ),
 
-              // ─── Sales banner ───
+              // ─── Boost banner ───
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 42, height: 42,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEDE7F6),
-                            borderRadius: BorderRadius.circular(12),
+                  child: GestureDetector(
+                    onTap: _openBoostPage,
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 42, height: 42,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEDE7F6),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.rocket_launch_rounded, color: AppTheme.primary, size: 22),
                           ),
-                          child: const Icon(Icons.trending_up_rounded, color: AppTheme.primary, size: 22),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Bravo ! Vos ventes sont en hausse',
-                                  style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 2),
-                              RichText(
-                                text: TextSpan(
-                                  text: 'Vous avez ',
-                                  style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
-                                  children: [
-                                    TextSpan(
-                                      text: '22%',
-                                      style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.success),
-                                    ),
-                                    TextSpan(text: ' de ventes en plus cette semaine'),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(l10n.t('shop.detail.boost.title'),
+                                    style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 2),
+                                Text(l10n.t('shop.detail.boost.subtitle'),
+                                    style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary)),
+                              ],
+                            ),
                           ),
-                        ),
-                        Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
-                      ],
+                          Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -565,11 +566,26 @@ class _ShopScreenState extends State<ShopScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: Row(
                     children: [
-                      _buildStatCard('Produits', '${shop.productCount}', Icons.shopping_bag_outlined, const Color(0xFFE8EAF6)),
+                      _buildStatCard(
+                        l10n.t('shop.detail.stats.products'),
+                        '${shop.productCount}',
+                        Icons.shopping_bag_outlined,
+                        const Color(0xFFE8EAF6),
+                      ),
                       const SizedBox(width: 10),
-                      _buildStatCard('Ventes', '127', Icons.trending_up_rounded, const Color(0xFFE8F5E9), change: '+22%', changeColor: AppTheme.success),
+                      _buildStatCard(
+                        l10n.t('shop.detail.stats.orders'),
+                        '${provider.statsOfShop(shop.id)?.orderCount ?? 0}',
+                        Icons.trending_up_rounded,
+                        const Color(0xFFE8F5E9),
+                      ),
                       const SizedBox(width: 10),
-                      _buildStatCard('Note', shop.rating.toString(), Icons.star_rounded, const Color(0xFFFCE4EC), change: '+0.5', changeColor: AppTheme.success),
+                      _buildStatCard(
+                        l10n.t('shop.detail.stats.rating'),
+                        shop.rating.toString(),
+                        Icons.star_rounded,
+                        const Color(0xFFFCE4EC),
+                      ),
                     ],
                   ),
                 ),
@@ -582,7 +598,7 @@ class _ShopScreenState extends State<ShopScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Produits (${shopProducts.length})',
+                      Text('${l10n.t('shop.detail.stats.products')} (${shopProducts.length})',
                           style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700)),
                       SizedBox(
                         height: 40,
@@ -591,7 +607,8 @@ class _ShopScreenState extends State<ShopScreen> {
                             context, MaterialPageRoute(builder: (_) => AddProductScreen(shopId: shop.id)),
                           ),
                           icon: const Icon(Icons.add_rounded, size: 18),
-                          label: Text('Ajouter', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13)),
+                          label: Text(l10n.t('shop.detail.products.add'),
+                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13)),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           ),
@@ -618,9 +635,11 @@ class _ShopScreenState extends State<ShopScreen> {
                               child: Icon(Icons.inventory_2_outlined, size: 36, color: AppTheme.primary.withOpacity(0.4)),
                             ),
                             const SizedBox(height: 16),
-                            Text('Aucun produit', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+                            Text(l10n.t('shop.detail.products.empty'),
+                                style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
                             const SizedBox(height: 4),
-                            Text('Ajoutez votre premier produit', style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textHint)),
+                            Text(l10n.t('shop.detail.products.emptySubtitle'),
+                                style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textHint)),
                           ],
                         ),
                       ),
@@ -635,65 +654,182 @@ class _ShopScreenState extends State<ShopScreen> {
                       ),
                     ),
 
-              // ─── Motivational banner ───
+              // ─── Received orders ───
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 48, height: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF3E8FF),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(Icons.local_offer_outlined, color: AppTheme.primary, size: 22),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("Envie d'augmenter vos ventes ?",
-                                  style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 4),
-                              Text('Ajoutez plus de produits et attirez plus de clients vers votre boutique.',
-                                  style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary, height: 1.4)),
-                              const SizedBox(height: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: AppTheme.primary.withOpacity(0.3), width: 1),
-                                ),
-                                child: Text('Voir conseils',
-                                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.primary)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.close_rounded, size: 18, color: AppTheme.textHint),
-                      ],
-                    ),
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(l10n.t('shop.detail.orders.title'),
+                          style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700)),
+                      Text(
+                        '${provider.ordersOfShop(shop.id).length}',
+                        style: GoogleFonts.poppins(fontSize: 13, color: AppTheme.textSecondary),
+                      ),
+                    ],
                   ),
                 ),
               ),
+              _buildReceivedOrders(provider, shop),
+
+              // ─── Closing space, so the last card is not flush with the edge ───
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ],
           ),
         ),
 
       ],
+    );
+  }
+
+  // ─── Orders buyers placed for the products of this shop ───
+  ///
+  /// Shows who ordered, what, and since when: the seller needs that to answer
+  /// on WhatsApp, which is where the deal actually happens.
+  Widget _buildReceivedOrders(AppProvider provider, Shop shop) {
+    final orders = provider.ordersOfShop(shop.id);
+
+    if (orders.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            context.l10n.t('shop.detail.orders.empty'),
+            style: TextStyle(color: AppTheme.textHint, fontSize: 13),
+          ),
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => _buildOrderCard(orders[index], accent: provider.themeColorOf(shop)),
+          childCount: orders.length,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderCard(Order order, {required Color accent}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // No status badge: order status is not something the app tracks or
+          // acts on yet, showing "En attente" on every order was only noise.
+          Text(
+            order.buyerName.isEmpty
+                ? context.l10n.t('shop.detail.orders.client')
+                : order.buyerName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          for (final item in order.items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(
+                '• ${item.productName} — ${formatPrice(item.productPrice)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textSecondary),
+              ),
+            ),
+          const SizedBox(height: 6),
+          Text(
+            '${order.date.day}/${order.date.month}/${order.date.year}',
+            style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textHint),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Product menu: edit or delete ───
+  Future<void> _onProductMenu(String action, Product product) async {
+    switch (action) {
+      case 'edit':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AddProductScreen(
+              shopId: product.shopId,
+              existing: product,
+            ),
+          ),
+        );
+
+      case 'delete':
+        await _confirmDelete(product);
+    }
+  }
+
+  /// Asks before deleting: the product disappears from the storefront at once
+  /// and there is no undo in the app.
+  Future<void> _confirmDelete(Product product) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.l10n.t('product.delete.title')),
+        content: Text(context.l10n.t('product.delete.body', {'name': product.name})),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.l10n.t('common.cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(context.l10n.t('product.menu.delete'),
+                style: const TextStyle(color: AppTheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final provider = context.read<AppProvider>();
+    final deleted = await provider.deleteProduct(product.id);
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          deleted
+              ? context.l10n.t('product.delete.done')
+              : (provider.dataError ?? context.l10n.t('product.delete.failed')),
+          style: GoogleFonts.poppins(),
+        ),
+        backgroundColor: deleted ? AppTheme.success : AppTheme.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  // ─── Opens the "boost" page: announced, not built yet ───
+  void _openBoostPage() {
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ComingSoonScreen(
+          title: context.l10n.t('shop.detail.boost.title'),
+          message: context.l10n.t('soon.boostMessage'),
+        ),
+      ),
     );
   }
 
@@ -777,8 +913,8 @@ class _ShopScreenState extends State<ShopScreen> {
     );
   }
 
-  // ─── Stat card (4-column with change) ───
-  Widget _buildStatCard(String label, String value, IconData icon, Color bgColor, {String? change, Color? changeColor}) {
+  // ─── Stat card ───
+  Widget _buildStatCard(String label, String value, IconData icon, Color bgColor) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
@@ -803,11 +939,6 @@ class _ShopScreenState extends State<ShopScreen> {
             const SizedBox(height: 2),
             Text(label,
                 style: GoogleFonts.poppins(fontSize: 10, color: AppTheme.textSecondary)),
-            if (change != null) ...[
-              const SizedBox(height: 4),
-              Text(change,
-                  style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w700, color: changeColor ?? AppTheme.success)),
-            ],
           ],
         ),
       ),
@@ -858,7 +989,7 @@ class _ShopScreenState extends State<ShopScreen> {
                       color: const Color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text('Neuf',
+                    child: Text(context.l10n.t('product.tag.neuf'),
                         style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w600, color: AppTheme.success)),
                   ),
                   const SizedBox(height: 6),
@@ -866,26 +997,39 @@ class _ShopScreenState extends State<ShopScreen> {
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
-                  Text('\$${product.price.toStringAsFixed(2)}',
+                  Text(formatPrice(product.price),
                       style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.primary)),
-                  const SizedBox(height: 2),
-                  RichText(
-                    text: TextSpan(
-                      text: 'Stock: ',
-                      style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textSecondary),
-                      children: [
-                        TextSpan(
-                          text: '${(10 + product.price.round() % 20)}',
-                          style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.success),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),
-            // Menu icon
-            const Icon(Icons.more_vert_rounded, color: AppTheme.textHint, size: 22),
+            // Actions on the product: edit or delete, from the seller's own shop
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint, size: 22),
+              onSelected: (action) => _onProductMenu(action, product),
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.edit_outlined, size: 18, color: AppTheme.textPrimary),
+                      const SizedBox(width: 10),
+                      Text(context.l10n.t('product.menu.edit')),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.error),
+                      const SizedBox(width: 10),
+                      Text(context.l10n.t('product.menu.delete'),
+                          style: const TextStyle(color: AppTheme.error)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

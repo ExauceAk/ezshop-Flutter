@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -74,7 +75,7 @@ class _SignupScreenState extends State<SignupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Créer un compte',
+                context.l10n.t('auth.signup.title'),
                 style: GoogleFonts.poppins(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
@@ -83,7 +84,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Rejoignez notre marketplace et commencez à acheter/vendre',
+                context.l10n.t('auth.signup.subtitle'),
                 style: GoogleFonts.poppins(fontSize: 14, color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 32),
@@ -93,35 +94,35 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildLabel('Nom complet'),
+                    _buildLabel(context.l10n.t('auth.signup.name')),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _nameController,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        hintText: 'Jean Dupont',
+                      decoration: InputDecoration(
+                        hintText: context.l10n.t('auth.signup.nameHint'),
                         prefixIcon: Icon(Icons.person_outline, color: AppTheme.textHint),
                       ),
-                      validator: (v) => v == null || v.isEmpty ? 'Nom requis' : null,
+                      validator: (v) => v == null || v.isEmpty ? context.l10n.t('auth.signup.nameRequired') : null,
                     ),
                     const SizedBox(height: 20),
-                    _buildLabel('Email'),
+                    _buildLabel(context.l10n.t('auth.login.email')),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        hintText: 'votre@email.com',
+                      decoration: InputDecoration(
+                        hintText: context.l10n.t('auth.login.emailHint'),
                         prefixIcon: Icon(Icons.email_outlined, color: AppTheme.textHint),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Email requis';
-                        if (!v.contains('@')) return 'Email invalide';
+                        if (v == null || v.isEmpty) return context.l10n.t('auth.signup.emailRequired');
+                        if (!v.contains('@')) return context.l10n.t('auth.login.emailRequired');
                         return null;
                       },
                     ),
                     const SizedBox(height: 20),
-                    _buildLabel('Mot de passe'),
+                    _buildLabel(context.l10n.t('auth.login.password')),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _passwordController,
@@ -135,13 +136,13 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Mot de passe requis';
-                        if (v.length < 6) return 'Minimum 6 caractères';
+                        if (v == null || v.isEmpty) return context.l10n.t('auth.signup.passwordRequired');
+                        if (v.length < 6) return context.l10n.t('auth.login.passwordMin');
                         return null;
                       },
                     ),
                     const SizedBox(height: 20),
-                    _buildLabel('Confirmer le mot de passe'),
+                    _buildLabel(context.l10n.t('auth.signup.confirm')),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _confirmPasswordController,
@@ -155,8 +156,8 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Confirmation requise';
-                        if (v != _passwordController.text) return 'Les mots de passe ne correspondent pas';
+                        if (v == null || v.isEmpty) return context.l10n.t('auth.signup.confirmRequired');
+                        if (v != _passwordController.text) return context.l10n.t('auth.signup.mismatch');
                         return null;
                       },
                     ),
@@ -180,11 +181,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   onPressed: () => Navigator.pop(context),
                   child: RichText(
                     text: TextSpan(
-                      text: 'Déjà un compte ? ',
+                      text: context.l10n.t('auth.login.haveAccount'),
                       style: GoogleFonts.poppins(color: AppTheme.textSecondary),
                       children: [
                         TextSpan(
-                          text: 'Se connecter',
+                          text: context.l10n.t('auth.login.cta'),
                           style: GoogleFonts.poppins(color: AppTheme.primary, fontWeight: FontWeight.w700),
                         ),
                       ],

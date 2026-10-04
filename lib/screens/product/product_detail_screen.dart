@@ -4,11 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/product_model.dart';
 import '../../models/shop_model.dart';
 import '../../utils/price_format.dart';
+import '../../widgets/product_tags.dart';
+import '../../widgets/shop_rating_sheet.dart';
 import '../../widgets/top_fade.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -37,6 +40,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final product = widget.product;
     // The shop is fetched with the rest of the app state, so the seller line
     // shows the shop name and its WhatsApp number instead of the raw shop id.
@@ -157,21 +161,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 60,
                     left: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: product.isNeuf ? AppTheme.success : AppTheme.warning,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        product.isNeuf ? 'Neuf' : 'Occasion',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                    child: ProductTags(product: product, fontSize: 12),
                   ),
                 ],
               ),
@@ -240,10 +230,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ],
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  // The price is only a starting point when the seller accepts
+                  // an offer, so the page says it right below the amount.
+                  if (product.isNegotiable)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withOpacity(0.07),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.handshake_outlined, size: 16, color: AppTheme.primary),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              l10n.t('product.negotiableHint'),
+                              style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.primary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   const SizedBox(height: 20),
                   // Description
                   Text(
-                    'Description',
+                    l10n.t('product.description'),
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -259,38 +273,50 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Seller info
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: AppTheme.cardDecoration,
-                    child: Row(
-                      children: [
-                        _buildShopLogo(shop),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Vendu par',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: AppTheme.textSecondary,
+                  // Seller info. Tapping it rates the shop: the seller card is where a buyer
+                  // already is when deciding whether to trust the shop.
+                  GestureDetector(
+                    onTap: shop == null ? null : () => showShopRatingSheet(context, shop!),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: AppTheme.cardDecoration,
+                      child: Row(
+                        children: [
+                          _buildShopLogo(shop),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l10n.t('product.soldBy'),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    color: AppTheme.textSecondary,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                shop?.name ?? product.sellerName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                                Text(
+                                  shop?.name ?? product.sellerName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                if (shop != null)
+                                  _buildRatingLine(context, shop),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                          if (shop != null)
+                            const Icon(
+                              Icons.star_outline_rounded,
+                              color: AppTheme.textHint,
+                              size: 20,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -299,7 +325,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton.icon(
-                      onPressed: shop != null ? () => _launchWhatsApp(product, shop) : null,
+                      onPressed: shop != null ? () => _orderOnWhatsApp(product, shop) : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF25D366),
                         foregroundColor: Colors.white,
@@ -313,8 +339,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       icon: const Icon(Icons.chat_rounded, size: 22),
                       label: Text(
                         shop != null
-                            ? 'Contacter via WhatsApp'
-                            : 'Boutique inconnue',
+                            ? l10n.t('product.orderWhatsapp')
+                            : l10n.t('product.unknownShop'),
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -391,36 +417,97 @@ Widget _buildShopLogo(Shop? shop) {
   );
 }
 
-/// Opens WhatsApp on the shop's own number, with the product pre-filled.
-Future<void> _launchWhatsApp(Product product, Shop shop) async {
-  // `whatsappLink` is a `wa.me` address, so the number is its last path segment.
+/// Opens WhatsApp on the shop's own number, with the product pre-filled, after
+/// recording the order so the seller sees who asked for what.
+///
+/// The order is saved first: if the buyer never reaches WhatsApp the seller
+/// still knows there was an intent, and the buyer's "Mes Commandes" lists it.
+/// Tapping twice on the same day updates the same order instead of creating a
+/// duplicate, which the API decides.
+Future<void> _orderOnWhatsApp(Product product, Shop shop) async {
+  final l10n = context.l10n;
+  final provider = context.read<AppProvider>();
+  final messenger = ScaffoldMessenger.of(context);
+
+  final created = await provider.orderViaWhatsApp(product.id);
+
+  final message = Uri.encodeComponent(
+    l10n.t('product.whatsappMessage', {
+      'name': product.name,
+      'price': formatPrice(product.price),
+    }),
+  );
   final digits = shop.whatsappLink
       .split('?')
       .first
       .split('/')
       .last
       .replaceAll(RegExp(r'[^0-9]'), '');
+
   if (digits.isEmpty) {
-    _showNoWhatsApp();
+    _showNoWhatsApp(context);
     return;
   }
 
-  final message = Uri.encodeComponent(
-    'Bonjour, je suis intéressé par « ${product.name} » à '
-    '${formatPrice(product.price)}. Est-il encore disponible ?',
-  );
   final url = Uri.parse('https://wa.me/$digits?text=$message');
+  final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
 
-  if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-    _showNoWhatsApp();
+  if (!opened) {
+    _showNoWhatsApp(context);
+    return;
+  }
+
+  if (!created) {
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          provider.dataError ?? l10n.t('product.orderAlreadyRecorded'),
+          style: GoogleFonts.poppins(fontSize: 13),
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 }
 
-void _showNoWhatsApp() {
+/// Average rating of a shop, under its name.
+Widget _buildRatingLine(BuildContext context, Shop shop) {
+  final l10n = context.l10n;
+
+  if (shop.ratingCount == 0) {
+    return Text(
+      l10n.t('product.noReviews'),
+      style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textHint),
+    );
+  }
+
+  return Row(
+    children: [
+      const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFFB300)),
+      const SizedBox(width: 2),
+      Text(
+        '${shop.rating.toStringAsFixed(1)} (${shop.ratingCount})',
+        style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.textSecondary),
+      ),
+      const SizedBox(width: 6),
+      Text(
+        l10n.t('product.rate'),
+        style: GoogleFonts.poppins(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppTheme.primary,
+        ),
+      ),
+    ],
+  );
+}
+
+void _showNoWhatsApp(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Text(
-        'WhatsApp indisponible : cette boutique n\'a pas renseigné de numéro.',
+        context.l10n.t('product.noWhatsapp'),
         style: GoogleFonts.poppins(fontSize: 13),
       ),
     ),

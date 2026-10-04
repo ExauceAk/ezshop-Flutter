@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/image_pick.dart';
+import '../../utils/price_format.dart';
+import '../common/coming_soon_screen.dart';
+import '../favorites/favorites_screen.dart';
+import '../settings/about_screen.dart';
+import '../settings/help_screen.dart';
+import '../settings/language_screen.dart';
+import '../settings/notifications_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,6 +21,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  /// True while a picked avatar is being uploaded, so the badge can show a
+  /// spinner instead of pretending the tap did nothing.
+  bool _savingAvatar = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -23,7 +36,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             return SingleChildScrollView(
               child: Column(
                 children: [
-                  _buildProfileHeader(user?.name ?? 'Invité', user?.email ?? ''),
+                  _buildProfileHeader(
+                    user?.name ?? context.l10n.t('profile.guest'),
+                    user?.email ?? '',
+                    user?.avatarUrl ?? '',
+                  ),
                   const SizedBox(height: 20),
                   _buildSettingsList(provider),
                   const SizedBox(height: 20),
@@ -36,7 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileHeader(String name, String email) {
+  Widget _buildProfileHeader(String name, String email, String avatarUrl) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -49,7 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             children: [
               Text(
-                'Mon Profil',
+                context.l10n.t('profile.title'),
                 style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
@@ -63,35 +80,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
             alignment: Alignment.bottomRight,
             children: [
               Container(
-                width: 90,
-                height: 90,
                 decoration: BoxDecoration(
-                  color: Colors.white,
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 4),
                 ),
-                child: Center(
-                  child: Text(
-                    name.isNotEmpty ? name[0].toUpperCase() : '?',
-                    style: GoogleFonts.poppins(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.primary,
-                    ),
+                // The clip lives on the photo, not on the container: a
+                // rectangle clip would leave the photo's own white margins
+                // visible as bars on either side of the face.
+                child: ClipOval(
+                  child: SizedBox(
+                    width: 90,
+                    height: 90,
+                    child: avatarUrl.isNotEmpty
+                        ? Image.network(
+                            avatarUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildInitial(name),
+                          )
+                        : _buildInitial(name),
                   ),
                 ),
               ),
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4),
-                  ],
+              GestureDetector(
+                onTap: _savingAvatar
+                    ? null
+                    : () => _pickAvatar(context.read<AppProvider>()),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4),
+                    ],
+                  ),
+                  child: _savingAvatar
+                      ? const Padding(
+                          padding: EdgeInsets.all(7),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.camera_alt_rounded, size: 14, color: AppTheme.primary),
                 ),
-                child: const Icon(Icons.camera_alt_rounded, size: 14, color: AppTheme.primary),
               ),
             ],
           ),
@@ -116,6 +146,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Fallback shown until a photo is picked: the first letter of the name.
+  Widget _buildInitial(String name) {
+    return Center(
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: GoogleFonts.poppins(
+          fontSize: 36,
+          fontWeight: FontWeight.w800,
+          color: AppTheme.primary,
+        ),
+      ),
+    );
+  }
+
+  /// Picks a square photo, then uploads it and attaches it to the profile.
+  ///
+  /// The crop keeps the framing the user chose instead of a layout cutting
+  /// their face off at display time.
+  Future<void> _pickAvatar(AppProvider provider) async {
+    final file = await pickAndCropSquare(
+      context,
+      title: context.l10n.t('profile.avatar.cropTitle'),
+    );
+    if (file == null || !mounted) return;
+
+    setState(() => _savingAvatar = true);
+    final saved = await provider.updateAvatar(file);
+    if (!mounted) return;
+    setState(() => _savingAvatar = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          saved
+              ? context.l10n.t('profile.avatar.updated')
+              : (provider.dataError ?? context.l10n.t('profile.avatar.failed')),
+          style: GoogleFonts.poppins(),
+        ),
+        backgroundColor: saved ? AppTheme.success : AppTheme.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
   Widget _buildSettingsList(AppProvider provider) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -123,7 +198,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Paramètres',
+            context.l10n.t('profile.settings'),
             style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 12),
@@ -136,54 +211,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildDivider(),
             _buildSettingsItem(
               Icons.storefront_rounded,
-              'Ma Boutique',
+              context.l10n.t('profile.menu.shops'),
               () => Navigator.pushNamed(context, '/shop'),
             ),
             _buildDivider(),
             _buildSettingsItem(
               Icons.shopping_bag_outlined,
-              'Mes Commandes',
+              context.l10n.t('profile.menu.orders'),
               () => _showOrdersDialog(context, provider),
+            ),
+            _buildDivider(),
+            _buildSettingsItem(
+              Icons.favorite_outline_rounded,
+              context.l10n.t('profile.menu.favorites'),
+              // The same screen as the Favoris tab, pushed so the profile menu
+              // does not have to know how the tab is built.
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FavoritesScreen()),
+              ),
             ),
           ]),
           const SizedBox(height: 16),
           _buildSettingsCard([
             _buildSettingsItem(
-              Icons.favorite_outline_rounded,
-              'Mes Favoris',
-              () {},
+              Icons.verified_outlined,
+              context.l10n.t('profile.menu.validation'),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ComingSoonScreen(
+                    title: context.l10n.t('profile.menu.validation'),
+                    message: context.l10n.t('soon.title'),
+                  ),
+                ),
+              ),
             ),
             _buildDivider(),
             _buildSettingsItem(
-              Icons.location_on_outlined,
-              'Adresses de livraison',
-              () {},
-            ),
-            _buildDivider(),
-            _buildSettingsItem(
-              Icons.payment_outlined,
-              'Moyens de paiement',
-              () {},
+              Icons.language_rounded,
+              context.l10n.t('profile.menu.language'),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LanguageScreen()),
+              ),
             ),
           ]),
           const SizedBox(height: 16),
           _buildSettingsCard([
             _buildSettingsItem(
               Icons.notifications_outlined,
-              'Notifications',
-              () {},
+              context.l10n.t('profile.menu.notifications'),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              ),
             ),
             _buildDivider(),
             _buildSettingsItem(
               Icons.help_outline_rounded,
-              'Aide & Support',
-              () {},
+              context.l10n.t('profile.menu.help'),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HelpScreen()),
+              ),
             ),
             _buildDivider(),
             _buildSettingsItem(
               Icons.info_outline_rounded,
-              'À propos',
-              () {},
+              context.l10n.t('profile.menu.about'),
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AboutScreen()),
+              ),
             ),
           ]),
           const SizedBox(height: 16),
@@ -199,7 +299,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
               icon: const Icon(Icons.logout_rounded, color: AppTheme.error),
               label: Text(
-                'Se déconnecter',
+                context.l10n.t('profile.logout'),
                 style: GoogleFonts.poppins(
                   color: AppTheme.error,
                   fontWeight: FontWeight.w600,
@@ -283,28 +383,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            Text('Modifier le profil', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700)),
+            Text(context.l10n.t('profile.edit.title'),
+                style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700)),
             const SizedBox(height: 24),
-            Text('Nom', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+            Text(context.l10n.t('profile.edit.name'),
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(hintText: 'Votre nom'),
+              decoration:
+                  InputDecoration(hintText: context.l10n.t('profile.edit.nameHint')),
             ),
             const SizedBox(height: 16),
-            Text('Téléphone', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+            Text(context.l10n.t('profile.edit.phone'),
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             TextField(
               controller: phoneController,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(hintText: '+33 6 00 00 00 00'),
+              decoration:
+                  InputDecoration(hintText: context.l10n.t('profile.edit.phoneHint')),
             ),
             const SizedBox(height: 16),
-            Text('Adresse', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+            Text(context.l10n.t('profile.edit.address'),
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             TextField(
               controller: addressController,
-              decoration: const InputDecoration(hintText: 'Votre adresse'),
+              decoration:
+                  InputDecoration(hintText: context.l10n.t('profile.edit.addressHint')),
             ),
             const Spacer(),
             SizedBox(
@@ -323,8 +430,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     SnackBar(
                       content: Text(
                         saved
-                            ? 'Profil mis à jour'
-                            : (provider.dataError ?? 'Impossible d\'enregistrer'),
+                            ? ctx.l10n.t('profile.edit.saved')
+                            : (provider.dataError ?? ctx.l10n.t('profile.edit.failed')),
                       ),
                       backgroundColor: saved ? AppTheme.success : AppTheme.error,
                       behavior: SnackBarBehavior.floating,
@@ -334,7 +441,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   );
                 },
-                child: const Text('Enregistrer'),
+                child: Text(context.l10n.t('common.save')),
               ),
             ),
           ],
@@ -343,6 +450,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Orders received across every shop the user owns.
+  ///
+  /// A seller needs the buyers who ordered from them, not the orders they
+  /// placed themselves, so this lists [AppProvider.receivedOrders]: all the
+  /// shops combined, newest first.
   void _showOrdersDialog(BuildContext context, AppProvider provider) {
     showModalBottomSheet(
       context: context,
@@ -365,7 +477,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            Text('Mes Commandes', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700)),
+            Text(ctx.l10n.t('profile.orders.title'),
+                style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700)),
             const SizedBox(height: 20),
             Expanded(
               child: provider.orders.isEmpty
@@ -375,61 +488,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           const Icon(Icons.shopping_bag_outlined, size: 60, color: AppTheme.textHint),
                           const SizedBox(height: 12),
-                          Text('Aucune commande', style: GoogleFonts.poppins(color: AppTheme.textSecondary)),
+                          Text(ctx.l10n.t('profile.orders.empty'),
+                              style: GoogleFonts.poppins(color: AppTheme.textSecondary)),
                         ],
                       ),
                     )
                   : ListView.separated(
-                      itemCount: provider.orders.length,
+                      itemCount: provider.receivedOrders.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
-                        final order = provider.orders[index];
-                        final statusColors = {
-                          'pending': AppTheme.warning,
-                          'shipped': AppTheme.primary,
-                          'delivered': AppTheme.success,
-                          'cancelled': AppTheme.error,
-                        };
-                        final statusLabels = {
-                          'pending': 'En attente',
-                          'shipped': 'Expédiée',
-                          'delivered': 'Livrée',
-                          'cancelled': 'Annulée',
-                        };
+                        final order = provider.receivedOrders[index];
                         return Container(
                           padding: const EdgeInsets.all(16),
                           decoration: AppTheme.cardDecoration,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              // Same as the shop screen: no status chip, the app has no
+                              // order-status logic to expose here.
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Commande #${order.id.substring(order.id.length - 4)}',
+                                    order.buyerName.isEmpty
+                                        ? ctx.l10n.t('shop.detail.orders.client')
+                                        : order.buyerName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: (statusColors[order.status] ?? AppTheme.warning).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      statusLabels[order.status] ?? order.status,
+                                  if (order.shopName.isNotEmpty)
+                                    Text(
+                                      order.shopName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: GoogleFonts.poppins(
                                         fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: statusColors[order.status],
+                                        color: AppTheme.textSecondary,
                                       ),
                                     ),
-                                  ),
                                 ],
                               ),
                               const SizedBox(height: 8),
+                              for (final item in order.items)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    '• ${item.productName}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(height: 4),
                               Text(
-                                '${order.items.length} article(s) • \$${order.totalAmount.toStringAsFixed(2)}',
-                                style: GoogleFonts.poppins(color: AppTheme.textSecondary, fontSize: 13),
+                                '${order.items.length} article(s) • ${formatPrice(order.totalAmount)}',
+                                style: GoogleFonts.poppins(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               Text(
                                 '${order.date.day}/${order.date.month}/${order.date.year}',

@@ -3,12 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../l10n/app_strings.dart';
+import '../../models/product_model.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 
+/// Product creation and edition, in one screen.
+///
+/// The two used to be two forms that drifted apart; passing [existing] switches
+/// the labels and the submit path, so an edit can never miss a field the
+/// creation form asks for.
 class AddProductScreen extends StatefulWidget {
   final String shopId;
-  const AddProductScreen({super.key, required this.shopId});
+
+  /// The product being edited, or null to create a new one.
+  final Product? existing;
+
+  const AddProductScreen({super.key, required this.shopId, this.existing});
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -16,13 +27,38 @@ class AddProductScreen extends StatefulWidget {
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descController = TextEditingController();
-  final _priceController = TextEditingController();
-  bool _isNeuf = true;
-  String _selectedCategoryId = '';
+  late final TextEditingController _nameController;
+  late final TextEditingController _descController;
+  late final TextEditingController _priceController;
+  late bool _isNeuf;
+  late bool _isNegotiable;
+  late String _selectedCategoryId;
   List<File> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
+
+  bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final product = widget.existing;
+    _nameController = TextEditingController(text: product?.name ?? '');
+    _descController = TextEditingController(text: product?.description ?? '');
+    _priceController = TextEditingController(
+      text: product == null ? '' : product.price.toStringAsFixed(0),
+    );
+    _isNeuf = product?.isNeuf ?? true;
+    _isNegotiable = product?.isNegotiable ?? true;
+    _selectedCategoryId = product?.categoryId ?? '';
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickImages() async {
     final images = await _picker.pickMultiImage(imageQuality: 80);
@@ -45,7 +81,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Text(
-          'Ajouter un produit',
+          context.l10n.t(
+            _isEditing ? 'product.form.edit.title' : 'product.form.add.title',
+          ),
           style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
         ),
         backgroundColor: Colors.white,
@@ -60,7 +98,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
             children: [
               // Product images
               Text(
-                'Photos du produit',
+                context.l10n.t('product.form.photos'),
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -105,6 +143,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         ],
                       );
                     }),
+                    // Photos already stored on the product, so editing shows
+                    // what the product looks like today.
+                    if (_isEditing && widget.existing!.images.isNotEmpty)
+                      for (final url in widget.existing!.images)
+                        Container(
+                          width: 120,
+                          height: 120,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            image: DecorationImage(
+                              image: NetworkImage(url),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
                     GestureDetector(
                       onTap: _pickImages,
                       child: Container(
@@ -124,7 +178,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             Icon(Icons.add_photo_alternate_outlined, color: AppTheme.primary, size: 32),
                             const SizedBox(height: 8),
                             Text(
-                              'Ajouter',
+                              context.l10n.t('product.form.addPhoto'),
                               style: GoogleFonts.poppins(
                                 fontSize: 12,
                                 color: AppTheme.primary,
@@ -141,28 +195,30 @@ class _AddProductScreenState extends State<AddProductScreen> {
               const SizedBox(height: 24),
 
               // Product name
-              _buildLabel('Nom du produit'),
+              _buildLabel(context.l10n.t('product.form.name')),
               const SizedBox(height: 8),
-              _buildTextField(_nameController, 'Ex: iPhone 14 Pro Max'),
+              _buildTextField(_nameController,
+                  context.l10n.t('product.form.nameHint')),
 
               const SizedBox(height: 20),
 
               // Description
-              _buildLabel('Description'),
+              _buildLabel(context.l10n.t('product.form.description')),
               const SizedBox(height: 8),
-              _buildTextField(_descController, 'Décrivez votre produit...', maxLines: 3),
+              _buildTextField(_descController,
+                  context.l10n.t('product.form.descriptionHint'), maxLines: 3),
 
               const SizedBox(height: 20),
 
               // Price
-              _buildLabel('Prix (\$)'),
+              _buildLabel(context.l10n.t('product.form.price')),
               const SizedBox(height: 8),
               _buildTextField(_priceController, '0.00', keyboardType: TextInputType.number),
 
               const SizedBox(height: 20),
 
               // Category selector
-              _buildLabel('Catégorie'),
+              _buildLabel(context.l10n.t('product.form.category')),
               const SizedBox(height: 8),
               Consumer<AppProvider>(
                 builder: (context, provider, _) {
@@ -176,7 +232,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     child: DropdownButtonFormField<String>(
                       value: _selectedCategoryId.isEmpty ? null : _selectedCategoryId,
                       hint: Text(
-                        'Choisir une catégorie',
+                        context.l10n.t('product.form.categoryHint'),
                         style: GoogleFonts.poppins(color: AppTheme.textHint, fontSize: 14),
                       ),
                       isExpanded: true,
@@ -201,7 +257,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               const SizedBox(height: 20),
 
               // Condition toggle
-              _buildLabel('État du produit'),
+              _buildLabel(context.l10n.t('product.form.condition')),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(4),
@@ -222,7 +278,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            'Neuf',
+                            context.l10n.t('product.tag.neuf'),
                             textAlign: TextAlign.center,
                             style: GoogleFonts.poppins(
                               fontWeight: _isNeuf ? FontWeight.w700 : FontWeight.w500,
@@ -243,7 +299,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            'Occasion',
+                            context.l10n.t('product.tag.occasion'),
                             textAlign: TextAlign.center,
                             style: GoogleFonts.poppins(
                               fontWeight: !_isNeuf ? FontWeight.w700 : FontWeight.w500,
@@ -252,6 +308,36 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           ),
                         ),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Negotiable price, shown as a badge next to the condition on
+              // every product card.
+              _buildLabel(context.l10n.t('product.form.priceLabel')),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    _buildConditionButton(
+                      label: context.l10n.t('product.form.negotiable'),
+                      selected: _isNegotiable,
+                      color: AppTheme.primary,
+                      onTap: () => setState(() => _isNegotiable = true),
+                    ),
+                    _buildConditionButton(
+                      label: context.l10n.t('product.form.fixedPrice'),
+                      selected: !_isNegotiable,
+                      color: AppTheme.textSecondary,
+                      onTap: () => setState(() => _isNegotiable = false),
                     ),
                   ],
                 ),
@@ -274,7 +360,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     elevation: 0,
                   ),
                   child: Text(
-                    'Publier le produit',
+                    context.l10n.t(
+                      _isEditing ? 'common.save' : 'product.form.publish',
+                    ),
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -283,6 +371,36 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// One half of the Neuf / Occasion and Négociable / Prix fixe toggles.
+  Widget _buildConditionButton({
+    required String label,
+    required bool selected,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: selected ? color : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? Colors.white : AppTheme.textSecondary,
+            ),
           ),
         ),
       ),
@@ -328,7 +446,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
-            return 'Ce champ est requis';
+            return context.l10n.t('product.form.required');
           }
           return null;
         },
@@ -338,10 +456,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   void _submit() async {
     if (_formKey.currentState!.validate()) {
-      if (_selectedImages.isEmpty) {
+      // Creating requires a photo; editing keeps the stored one when the
+      // seller does not pick a new one.
+      if (_selectedImages.isEmpty && !_isEditing) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Veuillez ajouter au moins une photo', style: GoogleFonts.poppins()),
+            content: Text(context.l10n.t('product.form.needPhoto'),
+              style: GoogleFonts.poppins()),
             backgroundColor: AppTheme.error,
           ),
         );
@@ -350,19 +471,20 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
       final provider = context.read<AppProvider>();
 
-      // The photo lives on the phone until it is uploaded, and only the
-      // returned URL can be stored on the product.
-      final imageUrl = await provider.uploadImage(
-        File(_selectedImages.first.path),
-        folder: 'products',
-      );
+      // Photos live on the phone until they are uploaded, and only the
+      // returned URLs can be stored on the product. Every picked photo is
+      // sent: the seller chose a gallery, and dropping all but the first is
+      // what made the extra photos disappear.
+      final galleryUrls = _selectedImages.isEmpty
+          ? <String>[]
+          : await provider.uploadImages(_selectedImages, folder: 'products');
       if (!mounted) return;
 
-      if (imageUrl == null) {
+      if (_selectedImages.isNotEmpty && galleryUrls.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              provider.dataError ?? "La photo n'a pas pu être envoyée",
+              provider.dataError ?? context.l10n.t('product.form.uploadFailed'),
               style: GoogleFonts.poppins(),
             ),
             backgroundColor: AppTheme.error,
@@ -371,22 +493,40 @@ class _AddProductScreenState extends State<AddProductScreen> {
         return;
       }
 
-      final success = await provider.addProduct(
-        shopId: widget.shopId,
-        name: _nameController.text,
-        description: _descController.text,
-        price: double.parse(_priceController.text),
-        isNeuf: _isNeuf,
-        imageUrl: imageUrl,
-        categoryId: _selectedCategoryId,
-      );
+      // The first photo is the cover; the gallery keeps every one of them,
+      // cover included, so the carousel does not lose it.
+      final coverUrl = galleryUrls.isEmpty ? '' : galleryUrls.first;
+
+      final success = _isEditing
+          ? await provider.updateProduct(
+              widget.existing!.id,
+              name: _nameController.text,
+              description: _descController.text,
+              price: double.parse(_priceController.text),
+              isNeuf: _isNeuf,
+              isNegotiable: _isNegotiable,
+              imageUrl: coverUrl,
+              imageUrls: galleryUrls,
+              categoryId: _selectedCategoryId,
+            )
+          : await provider.addProduct(
+              shopId: widget.shopId,
+              name: _nameController.text,
+              description: _descController.text,
+              price: double.parse(_priceController.text),
+              isNeuf: _isNeuf,
+              isNegotiable: _isNegotiable,
+              imageUrl: coverUrl,
+              imageUrls: galleryUrls,
+              categoryId: _selectedCategoryId,
+            );
       if (!mounted) return;
 
       if (!success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              provider.dataError ?? 'Impossible de publier le produit',
+              provider.dataError ?? context.l10n.t('product.form.publishFailed'),
               style: GoogleFonts.poppins(),
             ),
             backgroundColor: AppTheme.error,
@@ -398,7 +538,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Produit publié avec succès !', style: GoogleFonts.poppins()),
+          content: Text(
+            context.l10n.t(
+              _isEditing ? 'product.form.updated' : 'product.form.published',
+            ),
+            style: GoogleFonts.poppins(),
+          ),
           backgroundColor: AppTheme.success,
         ),
       );

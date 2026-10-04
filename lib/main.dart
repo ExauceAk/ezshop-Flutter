@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'l10n/app_strings.dart';
 import 'providers/app_provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
@@ -27,20 +28,27 @@ class MyApp extends StatelessWidget {
       // Restores the saved session and loads the catalog before the first
       // screen is shown, so no screen has to render empty-then-filled.
       create: (_) => AppProvider()..initialize(),
-      child: MaterialApp(
-        title: 'MarketPlace',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        home: const _RootRouter(),
-        routes: {
-          '/login': (_) => const LoginScreen(),
-          '/signup': (_) => const SignupScreen(),
-          '/forgot-password': (_) => const ForgotPasswordScreen(),
-          '/home': (_) => const MainScaffold(),
-          // Reached from the "Ma Boutique" entry of the profile menu, which
-          // navigates by name.
-          '/shop': (_) => const ShopScreen(),
-        },
+      // The language lives in the provider, so every string of the app is
+      // rebuilt from one catalog when it changes.
+      child: Consumer<AppProvider>(
+        builder: (context, provider, _) => AppLocaleScope(
+          strings: provider.strings,
+          child: MaterialApp(
+            title: 'EZ Shop',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            home: const _RootRouter(),
+            routes: {
+              '/login': (_) => const LoginScreen(),
+              '/signup': (_) => const SignupScreen(),
+              '/forgot-password': (_) => const ForgotPasswordScreen(),
+              '/home': (_) => const MainScaffold(),
+              // Reached from the "Mes boutiques" entry of the profile menu,
+              // which navigates by name.
+              '/shop': (_) => const ShopScreen(),
+            },
+          ),
+        ),
       ),
     );
   }

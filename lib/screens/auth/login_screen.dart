@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -42,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(provider.authError ?? 'Erreur de connexion'),
+          content: Text(provider.authError ?? context.l10n.t('auth.login.error')),
           backgroundColor: AppTheme.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -73,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               Center(
                 child: Text(
-                  'MarketPlace',
+                  context.l10n.t('about.title').isEmpty ? '' : 'EZ Shop',
                   style: GoogleFonts.poppins(
                     fontSize: 32,
                     fontWeight: FontWeight.w800,
@@ -84,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  'Connectez-vous pour continuer',
+                  context.l10n.t('auth.login.subtitle'),
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: AppTheme.textSecondary,
@@ -99,23 +100,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Email', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                    Text(context.l10n.t('auth.login.email'), style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        hintText: 'votre@email.com',
+                      decoration: InputDecoration(
+                        hintText: context.l10n.t('auth.login.emailHint'),
                         prefixIcon: Icon(Icons.email_outlined, color: AppTheme.textHint),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Email requis';
-                        if (!v.contains('@')) return 'Email invalide';
+                        if (v == null || v.isEmpty) return context.l10n.t('auth.login.emailRequired');
+                        if (!v.contains('@')) return context.l10n.t('auth.login.emailRequired');
                         return null;
                       },
                     ),
                     const SizedBox(height: 20),
-                    Text('Mot de passe', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                    Text(context.l10n.t('auth.login.password'), style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _passwordController,
@@ -132,8 +133,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Mot de passe requis';
-                        if (v.length < 6) return 'Minimum 6 caractères';
+                        if (v == null || v.isEmpty) return context.l10n.t('auth.login.passwordRequired');
+                        if (v.length < 6) return context.l10n.t('auth.login.passwordMin');
                         return null;
                       },
                     ),
@@ -146,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
                   child: Text(
-                    'Mot de passe oublié ?',
+                    context.l10n.t('auth.login.forgot'),
                     style: GoogleFonts.poppins(color: AppTheme.primary, fontWeight: FontWeight.w500),
                   ),
                 ),
@@ -165,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 24,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                         )
-                      : const Text('Se connecter'),
+                      : Text(context.l10n.t('auth.login.cta')),
                 ),
               ),
               const SizedBox(height: 24),
@@ -190,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.g_mobiledata, size: 24),
-                  label: Text('Continuer avec Google', style: GoogleFonts.poppins()),
+                  label: Text(context.l10n.t('auth.login.google'), style: GoogleFonts.poppins()),
                 ),
               ),
               const SizedBox(height: 32),

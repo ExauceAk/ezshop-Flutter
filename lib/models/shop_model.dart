@@ -7,7 +7,12 @@ class Shop {
   String logoUrl;
   String bannerUrl;
   final String ownerId;
+
+  /// Average of the ratings buyers gave the shop, 0 when nobody rated it yet.
   double rating;
+
+  /// How many buyers gave a rating.
+  int ratingCount;
   int productCount;
   DateTime createdAt;
   String whatsappLink;
@@ -29,7 +34,8 @@ class Shop {
     this.logoUrl = '',
     this.bannerUrl = '',
     required this.ownerId,
-    this.rating = 4.0,
+    this.rating = 0,
+    this.ratingCount = 0,
     this.productCount = 0,
     required this.createdAt,
     this.whatsappLink = '',
@@ -44,6 +50,7 @@ class Shop {
     String? logoUrl,
     String? bannerUrl,
     double? rating,
+    int? ratingCount,
     int? productCount,
     String? whatsappLink,
     String? theme,
@@ -58,6 +65,7 @@ class Shop {
       bannerUrl: bannerUrl ?? this.bannerUrl,
       ownerId: ownerId,
       rating: rating ?? this.rating,
+      ratingCount: ratingCount ?? this.ratingCount,
       productCount: productCount ?? this.productCount,
       createdAt: createdAt,
       whatsappLink: whatsappLink ?? this.whatsappLink,
@@ -75,6 +83,10 @@ class Shop {
       logoUrl: json['logoUrl']?.toString() ?? '',
       bannerUrl: json['bannerUrl']?.toString() ?? '',
       ownerId: json['ownerId']?.toString() ?? '',
+      // 0 means "not rated yet": the stars are drawn empty rather than
+      // pretending the shop has a perfect score.
+      rating: (json['rating'] as num?)?.toDouble() ?? 0,
+      ratingCount: (json['ratingCount'] as num?)?.toInt() ?? 0,
       productCount: (json['productCount'] as num?)?.toInt() ?? 0,
       // The API always sends an ISO timestamp, but fall back to now so a
       // malformed date cannot break the whole list.

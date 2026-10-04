@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/category_model.dart';
 import '../models/order_model.dart';
+import '../models/notification_model.dart';
 import '../models/product_model.dart';
 import '../models/shop_model.dart';
 import '../models/user_model.dart';
@@ -41,6 +42,60 @@ class Paged<T> {
       );
     }
     return Paged<T>(items: const [], total: 0);
+  }
+}
+
+/// Average rating of a shop and how many buyers gave one.
+class ShopRating {
+  const ShopRating({required this.average, required this.count});
+
+  final double average;
+  final int count;
+
+  factory ShopRating.fromJson(Map<String, dynamic> json) {
+    return ShopRating(
+      average: (json['average'] as num?)?.toDouble() ?? 0,
+      count: (json['count'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+/// Counters of one shop, for the seller dashboard.
+class ShopStats {
+  const ShopStats({
+    required this.productCount,
+    required this.orderCount,
+    required this.rating,
+    required this.ratingCount,
+  });
+
+  final int productCount;
+  final int orderCount;
+  final double rating;
+  final int ratingCount;
+
+  factory ShopStats.fromJson(Map<String, dynamic> json) {
+    return ShopStats(
+      productCount: (json['productCount'] as num?)?.toInt() ?? 0,
+      orderCount: (json['orderCount'] as num?)?.toInt() ?? 0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0,
+      ratingCount: (json['ratingCount'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+/// Outcome of recording an order from the WhatsApp button.
+class WhatsAppOrderResult {
+  const WhatsAppOrderResult({required this.alreadyOrdered});
+
+  /// True when this product was already ordered today, so no new order was
+  /// created.
+  final bool alreadyOrdered;
+
+  factory WhatsAppOrderResult.fromJson(Map<String, dynamic> json) {
+    return WhatsAppOrderResult(
+      alreadyOrdered: json['alreadyOrdered'] == true,
+    );
   }
 }
 
@@ -140,12 +195,16 @@ class MarketApi {
     String? email,
     String? phone,
     String? address,
+    String? avatarUrl,
   }) async {
     final body = <String, dynamic>{
       if (name != null && name.isNotEmpty) 'username': name.trim(),
       if (email != null && email.isNotEmpty) 'email': email.trim(),
       if (phone != null) 'phone': phone.trim(),
       if (address != null) 'address': address.trim(),
+      // Empty means "keep the stored avatar": clearing it is a separate
+      // decision, so an omitted field must not wipe the photo.
+      if (avatarUrl != null && avatarUrl.isNotEmpty) 'avatarUrl': avatarUrl,
     };
 
     final data = await _client.request('PATCH', '/users/update-profile', body: body);
@@ -279,6 +338,8 @@ class MarketApi {
     required String categoryId,
     required String shopId,
     bool isNeuf = true,
+    bool isNegotiable = true,
+    List<String> imageUrls = const [],
     int quantity = 1,
   }) async {
     final data = await _client.request('POST', '/products', body: {
@@ -287,12 +348,50 @@ class MarketApi {
       // The API validates price as a number, not a decimal string.
       'price': price,
       'imageUrl': imageUrl,
+      // The gallery: `imageUrl` stays the cover, `imageUrls` the rest.
+      if (imageUrls.isNotEmpty) 'imageUrls': imageUrls,
       'categoryId': categoryId,
       'shopId': shopId,
       'isNeuf': isNeuf,
+      'isNegotiable': isNegotiable,
       'quantity': quantity,
     });
     return Product.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Updates one of the seller's products.
+  ///
+  /// Only the fields passed are sent, so an edit that changes nothing about
+  /// the photo leaves the stored one alone.
+  Future<Product> updateProduct(
+    String productId, {
+    String? name,
+    String? description,
+    double? price,
+    String? imageUrl,
+    String? categoryId,
+    bool? isNeuf,
+    bool? isNegotiable,
+    List<String>? imageUrls,
+  }) async {
+    final body = <String, dynamic>{
+      if (name != null) 'name': name.trim(),
+      if (description != null) 'description': description.trim(),
+      if (price != null) 'price': price,
+      if (imageUrl != null && imageUrl.isNotEmpty) 'imageUrl': imageUrl,
+      if (imageUrls != null) 'imageUrls': imageUrls,
+      if (categoryId != null && categoryId.isNotEmpty) 'categoryId': categoryId,
+      if (isNeuf != null) 'isNeuf': isNeuf,
+      if (isNegotiable != null) 'isNegotiable': isNegotiable,
+    };
+
+    final data = await _client.request('PATCH', '/products/$productId', body: body);
+    return Product.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Deletes one of the seller's products.
+  Future<void> deleteProduct(String productId) {
+    return _client.request('DELETE', '/products/$productId');
   }
 
   // ─── Media ───
@@ -340,6 +439,54 @@ class MarketApi {
     }
   }
 
+  // ─── Shop ratings ───
+
+  /// Rates a shop, or replaces the rating the caller already gave it.
+  ///
+  /// @returns the new average and how many ratings the shop has.
+  Future<ShopRating> rateShop(String shopId, int rating) async {
+    final data = await _client.request(
+      'POST',
+      '/shops/$shopId/rating',
+      body: {'rating': rating},
+    );
+    return ShopRating.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// The rating the caller already gave a shop, 0 when they gave none.
+  Future<int> myShopRating(String shopId) async {
+    final data = await _client.request('GET', '/shops/$shopId/rating/mine');
+    return (data as Map<String, dynamic>)['rating'] as int? ?? 0;
+  }
+
+  /// Product count, order count and rating of a shop.
+  Future<ShopStats> shopStats(String shopId) async {
+    final data = await _client.request('GET', '/shops/$shopId/stats');
+    return ShopStats.fromJson(data as Map<String, dynamic>);
+  }
+
+  // ─── Notifications ───
+
+  /// Notifications published by the admin, newest first.
+  Future<List<AppNotification>> notifications() async {
+    final data = await _client.request('GET', '/notifications');
+    if (data is! List) return const [];
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(AppNotification.fromJson)
+        .toList();
+  }
+
+  /// Marks one notification as read.
+  Future<void> markNotificationRead(String id) {
+    return _client.request('PATCH', '/notifications/$id/read');
+  }
+
+  /// Marks every notification as read.
+  Future<void> markAllNotificationsRead() {
+    return _client.request('PATCH', '/notifications/read-all');
+  }
+
   // ─── Favorites ───
 
   /// Products the user marked as favorite, most recent first.
@@ -374,12 +521,29 @@ class MarketApi {
     return page.items;
   }
 
-  Future<List<Order>> receivedOrders() async {
+  Future<List<Order>> receivedOrders({String? shopId}) async {
     final page = Paged.parse<Order>(
-      await _client.request('GET', '/orders/received'),
+      await _client.request(
+        'GET',
+        '/orders/received',
+        query: {if (shopId != null && shopId.isNotEmpty) 'shopId': shopId},
+      ),
       Order.fromJson,
     );
     return page.items;
+  }
+
+  /// Records the order behind an "order on WhatsApp" tap.
+  ///
+  /// The API answers `alreadyOrdered` when this product was already ordered
+  /// today, so the app can say so instead of creating a second identical order.
+  Future<WhatsAppOrderResult> orderViaWhatsApp(String productId) async {
+    final data = await _client.request(
+      'POST',
+      '/orders/whatsapp',
+      body: {'productId': productId},
+    );
+    return WhatsAppOrderResult.fromJson(data as Map<String, dynamic>);
   }
 
   // ─── Cart ───

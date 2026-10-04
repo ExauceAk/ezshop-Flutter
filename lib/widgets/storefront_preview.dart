@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../l10n/app_strings.dart';
 import '../models/preview_product.dart';
 import '../models/shop_theme.dart';
 import '../models/shop_theme_config.dart';
@@ -44,13 +45,21 @@ class StorefrontPreview extends StatelessWidget {
 
   /// Falls back to the seller's defaults only when they left a field empty,
   /// exactly like `resolveContent` on the web.
-  String get _heroTitle {
+  /// Copy shown when the seller left a field empty.
+  ///
+  /// Kept in sync with `resolveContent` on the web, and translated like the rest
+  /// of the interface: an English seller previewing their theme must read the
+  /// storefront copy in English.
+  String _heroTitle(AppStrings l10n) {
     if (config.heroTitle.isNotEmpty) return config.heroTitle;
-    return theme.heroUsesImage ? name : 'Bienvenue chez $name';
+    return theme.heroUsesImage
+        ? name
+        : l10n.t('preview.welcome', {'name': name});
   }
 
-  String get _heroEyebrow =>
-      config.heroEyebrow.isNotEmpty ? config.heroEyebrow : 'Boutique · @$slug';
+  String _heroEyebrow(AppStrings l10n) => config.heroEyebrow.isNotEmpty
+      ? config.heroEyebrow
+      : l10n.t('preview.byline', {'slug': slug});
 
   String get _heroSubtitle =>
       config.heroSubtitle.isNotEmpty ? config.heroSubtitle : description;
@@ -61,19 +70,24 @@ class StorefrontPreview extends StatelessWidget {
     return theme.previewImage;
   }
 
-  String get _ctaLabel =>
-      config.heroCtaLabel.isNotEmpty ? config.heroCtaLabel : 'Découvrir la collection';
+  String _ctaLabel(AppStrings l10n) => config.heroCtaLabel.isNotEmpty
+      ? config.heroCtaLabel
+      : l10n.t('preview.discover');
 
-  String get _aboutTitle =>
-      config.aboutTitle.isNotEmpty ? config.aboutTitle : 'À propos de $name';
+  String _aboutTitle(AppStrings l10n) => config.aboutTitle.isNotEmpty
+      ? config.aboutTitle
+      : l10n.t('preview.aboutOf', {'name': name});
 
   String get _aboutText => config.aboutText.isNotEmpty ? config.aboutText : description;
 
-  String get _footerText =>
-      config.footerText.isNotEmpty ? config.footerText : '$name · Boutique sur Macketttz';
+  String _footerText(AppStrings l10n) => config.footerText.isNotEmpty
+      ? config.footerText
+      : l10n.t('preview.footer', {'name': name});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return DecoratedBox(
       decoration: BoxDecoration(color: theme.background),
       child: SingleChildScrollView(
@@ -86,47 +100,48 @@ class StorefrontPreview extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Header(theme: theme, name: name, logoUrl: logoUrl),
-            _buildHero(),
+            _buildHero(l10n),
             if (theme.showStats) _Stats(theme: theme, products: products),
             _Products(theme: theme, products: products),
             if (theme.showAbout)
-              _About(theme: theme, title: _aboutTitle, text: _aboutText),
-            _Footer(theme: theme, text: _footerText),
+              _About(theme: theme, title: _aboutTitle(l10n), text: _aboutText),
+            _Footer(theme: theme, text: _footerText(l10n)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHero() {
+  Widget _buildHero(AppStrings l10n) {
     switch (theme.heroStyle) {
       case HeroStyle.overlay:
         return _HeroOverlay(
           theme,
           _heroImage,
-          _heroEyebrow,
-          _heroTitle,
+          _heroEyebrow(l10n),
+          _heroTitle(l10n),
           _heroSubtitle,
-          _ctaLabel,
+          _ctaLabel(l10n),
         );
       case HeroStyle.split:
         return _HeroSplit(
           theme,
           _heroImage,
-          _heroEyebrow,
-          _heroTitle,
+          _heroEyebrow(l10n),
+          _heroTitle(l10n),
           _heroSubtitle,
-          _ctaLabel,
+          _ctaLabel(l10n),
         );
       case HeroStyle.stacked:
-        return _HeroStacked(theme, _heroEyebrow, _heroTitle, _heroSubtitle, _ctaLabel);
+        return _HeroStacked(
+            theme, _heroEyebrow(l10n), _heroTitle(l10n), _heroSubtitle, _ctaLabel(l10n));
       case HeroStyle.strip:
         return _HeroStrip(
           theme,
           _heroImage,
           logoUrl,
-          _heroEyebrow,
-          _heroTitle,
+          _heroEyebrow(l10n),
+          _heroTitle(l10n),
           _heroSubtitle,
         );
     }
@@ -249,8 +264,9 @@ class _Header extends StatelessWidget {
                 ),
               ),
               if (showLinks) ...[
-                _NavLabel(theme: theme, label: 'Boutique'),
-                _NavLabel(theme: theme, label: 'À propos'),
+                _NavLabel(
+                    theme: theme, label: context.l10n.t('preview.shopName')),
+                _NavLabel(theme: theme, label: context.l10n.t('preview.about')),
               ],
               const SizedBox(width: 6),
               Icon(Icons.shopping_bag_outlined, size: 18, color: theme.textColor),
@@ -618,11 +634,11 @@ class _Stats extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _stat(theme, '${products.length}', 'produits'),
+          _stat(theme, '${products.length}', context.l10n.t('preview.products')),
           _divider(theme),
-          _stat(theme, '$available', 'disponibles'),
+          _stat(theme, '$available', context.l10n.t('preview.availableCount')),
           _divider(theme),
-          _stat(theme, '$fresh', 'neufs'),
+          _stat(theme, '$fresh', context.l10n.t('preview.freshCount')),
         ],
       ),
     );
@@ -835,7 +851,9 @@ class _ProductCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          product.isNeuf ? 'Neuf' : 'Occas.',
+                          product.isNeuf
+                              ? context.l10n.t('product.tag.neuf')
+                              : context.l10n.t('preview.usedShort'),
                           style: _body(
                             theme,
                             8,
@@ -851,7 +869,7 @@ class _ProductCard extends StatelessWidget {
                         color: theme.background.withValues(alpha: 0.6),
                         child: Center(
                           child: Text(
-                            'Épuisé',
+                            context.l10n.t('preview.soldOut'),
                             style: _body(theme, 10, color: theme.muted),
                           ),
                         ),

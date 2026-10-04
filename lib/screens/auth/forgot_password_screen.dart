@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 
@@ -72,7 +73,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 24),
         Text(
-          'Mot de passe oublié ?',
+          context.l10n.t('auth.login.forgot'),
           style: GoogleFonts.poppins(fontSize: 28, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 12),
@@ -119,7 +120,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 32),
         Text(
-          'Email envoyé !',
+          context.l10n.t('auth.forgot.success'),
           style: GoogleFonts.poppins(fontSize: 28, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 12),
@@ -134,7 +135,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           height: 56,
           child: ElevatedButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Retour à la connexion'),
+            child: Text(context.l10n.t('auth.forgot.backToLogin')),
           ),
         ),
         const SizedBox(height: 16),

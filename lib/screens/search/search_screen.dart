@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../models/product_model.dart';
-import '../product/product_detail_screen.dart';
+import '../../widgets/product_card.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -64,7 +64,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     autofocus: false,
                     onChanged: (v) => provider.setSearchQuery(v),
                     decoration: InputDecoration(
-                      hintText: 'Rechercher...',
+                      hintText: context.l10n.t('search.hint'),
                       prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textHint),
                       suffixIcon: provider.searchQuery.isNotEmpty
                           ? IconButton(
@@ -159,7 +159,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 Icon(Icons.search_off_rounded, size: 80, color: AppTheme.textHint.withOpacity(0.3)),
                 const SizedBox(height: 16),
                 Text(
-                  'Aucun résultat trouvé',
+                  context.l10n.t('search.empty.title'),
                   style: GoogleFonts.poppins(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -168,7 +168,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Essayez avec d\'autres mots-clés',
+                  context.l10n.t('search.empty.subtitle'),
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: AppTheme.textHint,
@@ -182,110 +182,16 @@ class _SearchScreenState extends State<SearchScreen> {
           padding: const EdgeInsets.all(20),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 0.65,
+            childAspectRatio: 0.64,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),
           itemCount: results.length,
           itemBuilder: (context, index) {
-            return _buildGridProductCard(results[index]);
+            return ProductCard(product: results[index]);
           },
         );
       },
-    );
-  }
-
-  Widget _buildGridProductCard(Product product) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
-        );
-      },
-      child: Container(
-        decoration: AppTheme.cardDecoration,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                Container(
-                  height: 140,
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF1F3F5),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    child: Image.network(
-                      product.images.isNotEmpty ? product.images.first : '',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, size: 40, color: AppTheme.textHint),
-                    ),
-                  ),
-                ),
-                if (product.discountPercent > 0)
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.error,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '-${product.discountPercent.round()}%',
-                        style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: GestureDetector(
-                    onTap: () => context.read<AppProvider>().toggleFavorite(product.id),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
-                      ),
-                      child: Icon(
-                        product.isFavorite ? Icons.favorite : Icons.favorite_border,
-                        size: 16,
-                        color: product.isFavorite ? AppTheme.error : AppTheme.textHint,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${product.price.toStringAsFixed(2)}',
-                    style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.primary),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

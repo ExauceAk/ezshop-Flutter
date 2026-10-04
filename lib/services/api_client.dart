@@ -155,13 +155,13 @@ class ApiClient {
         case 'DELETE':
           return await _client.delete(uri, headers: headers, body: jsonEncode(body ?? {})).timeout(_timeout);
         default:
-          throw ApiException('Méthode HTTP non supportée : $method');
+          throw ApiException('Unsupported HTTP method: $method');
       }
     } on TimeoutException {
-      throw ApiException('Le serveur met trop de temps à répondre.');
+      throw ApiException('The server took too long to answer.');
     } catch (e) {
       throw ApiException(
-        'Impossible de joindre le serveur. Vérifiez qu\'il est démarré et que l\'adresse est correcte.',
+        'Cannot reach the server. Check that it is running and the address is correct.',
       );
     }
   }
@@ -242,14 +242,14 @@ class ApiClient {
         parsed['$key'] = value is List && value.isNotEmpty ? '${value.first}' : '$value';
       });
       throw ApiException(
-        _messageFor(map, 'Certaines informations sont invalides.'),
+        _messageFor(map, 'Some information is invalid.'),
         statusCode: response.statusCode,
         errors: parsed,
       );
     }
 
     throw ApiException(
-      _messageFor(map, 'Une erreur est survenue.'),
+      _messageFor(map, 'Something went wrong.'),
       statusCode: response.statusCode,
     );
   }
@@ -269,9 +269,9 @@ class ApiClient {
     final message = body['message'];
     if (message is String && message.trim().isNotEmpty) return message;
 
-    if (body['statusCode'] == 401) return 'Session expirée, reconnectez-vous.';
-    if (body['statusCode'] == 403) return 'Action non autorisée.';
-    if (body['statusCode'] == 404) return 'Ressource introuvable.';
+    if (body['statusCode'] == 401) return 'Your session expired, please sign in again.';
+    if (body['statusCode'] == 403) return 'Action not allowed.';
+    if (body['statusCode'] == 404) return 'Resource not found.';
 
     return fallback;
   }

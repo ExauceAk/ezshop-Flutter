@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_strings.dart';
 import '../../models/shop_theme_config.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
@@ -30,7 +31,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Créer ma boutique'),
+        title: Text(context.l10n.t('form.create.title')),
         backgroundColor: Colors.transparent,
       ),
       body: Consumer<AppProvider>(
@@ -51,7 +52,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           child: ElevatedButton(
             onPressed: () => _handleSubmit(context.read<AppProvider>()),
-            child: const Text('Créer ma boutique'),
+            child: Text(context.l10n.t('form.create.cta')),
           ),
         ),
       ),
@@ -104,7 +105,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
     if (!success) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(provider.dataError ?? 'Impossible de créer la boutique'),
+          content: Text(provider.dataError ?? context.l10n.t('form.create.failed')),
           backgroundColor: AppTheme.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -115,7 +116,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
 
     messenger.showSnackBar(
       SnackBar(
-        content: const Text('Boutique créée avec succès ! 🎉'),
+        content: Text(context.l10n.t('form.create.success')),
         backgroundColor: AppTheme.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -135,7 +136,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
     if (!mounted) return null;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(provider.dataError ?? "L'image n'a pas pu être envoyée"),
+        content: Text(provider.dataError ?? context.l10n.t('form.uploadFailed')),
         backgroundColor: AppTheme.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

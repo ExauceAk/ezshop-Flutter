@@ -299,6 +299,33 @@ const List<ShopTheme> storefrontThemes = [
 
 const String defaultThemeId = 'atelier';
 
+/// A theme announced in the picker but not built yet.
+///
+/// Sellers see the roadmap without being able to pick something the storefront
+/// cannot render, so these are drawn as locked cards: no palette, no preview
+/// image, no selection. Once a theme is implemented in `next/lib/shop/themes.ts`
+/// it moves to [storefrontThemes] and its locked entry disappears.
+class LockedShopTheme {
+  const LockedShopTheme({required this.id, required this.name});
+
+  final String id;
+  final String name;
+}
+
+/// The five available themes plus the ten still to come.
+const List<LockedShopTheme> lockedStorefrontThemes = [
+  LockedShopTheme(id: 'baobab', name: 'Baobab'),
+  LockedShopTheme(id: 'sahel', name: 'Sahel'),
+  LockedShopTheme(id: 'zellige', name: 'Zellige'),
+  LockedShopTheme(id: 'kraft', name: 'Kraft'),
+  LockedShopTheme(id: 'neon', name: 'Néon'),
+  LockedShopTheme(id: 'vintage', name: 'Vintage'),
+  LockedShopTheme(id: 'tribal', name: 'Tribal'),
+  LockedShopTheme(id: 'aqua', name: 'Aqua'),
+  LockedShopTheme(id: 'orbit', name: 'Orbit'),
+  LockedShopTheme(id: 'ardoise', name: 'Ardoise'),
+];
+
 /// Resolves a theme id, falling back to the default one.
 ShopTheme getStorefrontTheme(String? id) {
   for (final theme in storefrontThemes) {

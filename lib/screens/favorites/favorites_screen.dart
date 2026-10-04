@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/product_model.dart';
+import '../../widgets/product_tags.dart';
 import '../product/product_detail_screen.dart';
 
 class FavoritesScreen extends StatelessWidget {
@@ -15,7 +17,7 @@ class FavoritesScreen extends StatelessWidget {
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Text(
-          'Mes Favoris',
+          context.l10n.t('favorites.title'),
           style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
         ),
         backgroundColor: Colors.white,
@@ -32,7 +34,7 @@ class FavoritesScreen extends StatelessWidget {
                   Icon(Icons.favorite_border_rounded, size: 80, color: AppTheme.textHint.withOpacity(0.3)),
                   const SizedBox(height: 16),
                   Text(
-                    'Aucun favori pour le moment',
+                    context.l10n.t('favorites.empty.title'),
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       color: AppTheme.textSecondary,
@@ -40,7 +42,7 @@ class FavoritesScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Appuyez sur ♡ pour ajouter un produit',
+                    context.l10n.t('favorites.empty.subtitle'),
                     style: GoogleFonts.poppins(
                       fontSize: 13,
                       color: AppTheme.textHint,
@@ -101,21 +103,7 @@ class FavoritesScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: product.isNeuf ? AppTheme.success : AppTheme.warning,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            product.isNeuf ? 'Neuf' : 'Occasion',
-                            style: GoogleFonts.poppins(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
+                        Flexible(child: ProductTags(product: product, fontSize: 11)),
                       ],
                     ),
                     const SizedBox(height: 4),

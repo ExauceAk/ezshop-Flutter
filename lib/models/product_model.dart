@@ -12,6 +12,12 @@ class Product {
   final double rating;
   final int reviewCount;
   final bool isNeuf;
+
+  /// Whether the seller accepts an offer below the listed price.
+  ///
+  /// Defaults to true: a marketplace product is negotiable unless the seller
+  /// says otherwise.
+  final bool isNegotiable;
   bool isFavorite;
 
   Product({
@@ -28,6 +34,7 @@ class Product {
     this.rating = 4.0,
     this.reviewCount = 0,
     this.isNeuf = true,
+    this.isNegotiable = true,
     this.isFavorite = false,
   });
 
@@ -49,6 +56,7 @@ class Product {
     List<String>? imageUrls,
     String? categoryId,
     bool? isNeuf,
+    bool? isNegotiable,
     bool? isFavorite,
   }) {
     return Product(
@@ -65,6 +73,7 @@ class Product {
       rating: rating,
       reviewCount: reviewCount,
       isNeuf: isNeuf ?? this.isNeuf,
+      isNegotiable: isNegotiable ?? this.isNegotiable,
       isFavorite: isFavorite ?? this.isFavorite,
     );
   }
@@ -93,6 +102,7 @@ class Product {
       shopId: json['shopId']?.toString() ?? '',
       sellerName: shop is Map ? shop['name']?.toString() ?? '' : (json['sellerName']?.toString() ?? ''),
       isNeuf: json['isNeuf'] != false,
+      isNegotiable: json['isNegotiable'] != false,
     );
   }
 

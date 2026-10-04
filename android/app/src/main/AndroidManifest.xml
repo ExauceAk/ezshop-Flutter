@@ -3,7 +3,7 @@
          previews over the network. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="market"
+        android:label="EZ Shop"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

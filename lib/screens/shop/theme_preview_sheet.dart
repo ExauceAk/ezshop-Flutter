@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../l10n/app_strings.dart';
 import '../../models/shop_theme.dart';
 import '../../models/shop_theme_config.dart';
 import '../../theme/app_theme.dart';
@@ -21,7 +22,7 @@ void showThemePreview(
   String logoUrl = '',
   String bannerUrl = '',
   ShopThemeConfig config = const ShopThemeConfig(),
-  String actionLabel = 'Utiliser ce thème',
+  String actionLabel = '',
 }) {
   showModalBottomSheet(
     context: context,
@@ -74,6 +75,8 @@ class _ThemePreviewSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -122,7 +125,9 @@ class _ThemePreviewSheet extends StatelessWidget {
                     Navigator.pop(context);
                     onSelect();
                   },
-                  child: Text(actionLabel),
+                  child: Text(
+                    actionLabel.isEmpty ? l10n.t('preview.apply') : actionLabel,
+                  ),
                 ),
               ],
             ),

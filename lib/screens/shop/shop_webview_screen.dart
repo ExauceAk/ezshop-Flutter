@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../config/app_config.dart';
+import '../../l10n/app_strings.dart';
 import '../../models/shop_model.dart';
 import '../../theme/app_theme.dart';
 
@@ -69,6 +70,8 @@ class _ShopWebViewScreenState extends State<ShopWebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -111,7 +114,7 @@ class _ShopWebViewScreenState extends State<ShopWebViewScreen> {
         actions: [
           if (_error != null || _loading)
             IconButton(
-              tooltip: 'Recharger',
+              tooltip: l10n.t('webview.reload'),
               icon: const Icon(Icons.refresh_rounded, size: 20),
               onPressed: () {
                 setState(() => _error = null);
@@ -119,7 +122,7 @@ class _ShopWebViewScreenState extends State<ShopWebViewScreen> {
               },
             ),
           IconButton(
-            tooltip: 'Ouvrir dans le navigateur',
+            tooltip: l10n.t('webview.openBrowser'),
             icon: const Icon(Icons.open_in_new_rounded, size: 20),
             onPressed: _openInBrowser,
           ),
@@ -156,7 +159,7 @@ class _ShopWebViewScreenState extends State<ShopWebViewScreen> {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Boutique injoignable',
+                    l10n.t('webview.unreachable'),
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -165,8 +168,8 @@ class _ShopWebViewScreenState extends State<ShopWebViewScreen> {
                   const SizedBox(height: 6),
                   Text(
                     widget.shop.subdomain.isEmpty
-                        ? 'Cette boutique n\'a pas encore de nom de domaine.'
-                        : 'Impossible d\'afficher $_url',
+                        ? l10n.t('webview.noDomain')
+                        : l10n.t('webview.cannotDisplay', {'url': _url}),
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       fontSize: 12,
@@ -179,7 +182,7 @@ class _ShopWebViewScreenState extends State<ShopWebViewScreen> {
                     onPressed: _openInBrowser,
                     icon: const Icon(Icons.open_in_new_rounded, size: 18),
                     label: Text(
-                      'Ouvrir dans le navigateur',
+                      l10n.t('webview.openBrowser'),
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w700,
                         fontSize: 13,

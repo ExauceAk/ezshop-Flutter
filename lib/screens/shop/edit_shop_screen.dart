@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_strings.dart';
 import '../../models/shop_model.dart';
 import '../../models/shop_theme_config.dart';
 import '../../providers/app_provider.dart';
@@ -73,7 +74,7 @@ class _EditShopScreenState extends State<EditShopScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Personnaliser la boutique'),
+        title: Text(context.l10n.t('form.update.title')),
         backgroundColor: Colors.transparent,
       ),
       body: Consumer<AppProvider>(
@@ -93,7 +94,7 @@ class _EditShopScreenState extends State<EditShopScreen> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           child: ElevatedButton(
             onPressed: () => _handleSave(context.read<AppProvider>()),
-            child: const Text('Enregistrer'),
+            child: Text(context.l10n.t('form.update.cta')),
           ),
         ),
       ),
@@ -110,7 +111,7 @@ class _EditShopScreenState extends State<EditShopScreen> {
       logoUrl: widget.shop.logoUrl,
       bannerUrl: widget.shop.bannerUrl,
       config: _config,
-      actionLabel: 'Appliquer ce thème',
+      actionLabel: context.l10n.t('form.preview.apply'),
       onSelect: () {},
     );
   }
@@ -151,7 +152,7 @@ class _EditShopScreenState extends State<EditShopScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            provider.dataError ?? 'Impossible de modifier cette boutique',
+            provider.dataError ?? context.l10n.t('form.update.failed'),
           ),
           backgroundColor: AppTheme.error,
           behavior: SnackBarBehavior.floating,
@@ -163,7 +164,7 @@ class _EditShopScreenState extends State<EditShopScreen> {
 
     messenger.showSnackBar(
       SnackBar(
-        content: const Text('Boutique mise à jour ✅'),
+        content: Text(context.l10n.t('form.update.success')),
         backgroundColor: AppTheme.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -185,7 +186,7 @@ class _EditShopScreenState extends State<EditShopScreen> {
     if (!mounted) return null;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(provider.dataError ?? "L'image n'a pas pu être envoyée"),
+        content: Text(provider.dataError ?? context.l10n.t('form.uploadFailed')),
         backgroundColor: AppTheme.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
