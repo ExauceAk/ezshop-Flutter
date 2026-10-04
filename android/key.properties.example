@@ -1,0 +1,14 @@
+# Copy to key.properties and fill in with the values from your own keystore.
+#
+# Generate one with:
+#   keytool -genkeypair -v -keystore ezshop-upload.p12 -storetype PKCS12 \
+#           -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# Then register the certificate on the Play Console under
+# Release > Setup > App integrity > Upload key, and paste the SHA-1/SHA-256
+# fingerprints it asks for:
+#   keytool -list -v -keystore ezshop-upload.p12
+storePassword=
+keyPassword=
+keyAlias=upload
+storeFile=ezshop-upload.p12
