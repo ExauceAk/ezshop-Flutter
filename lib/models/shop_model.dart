@@ -25,7 +25,7 @@ class Shop {
   ShopThemeConfig themeConfig;
 
   /// Slug of the public address, e.g. `techzone` for
-  /// `techzone.ezshop.exauceakk.com`.
+  /// `techzone.ezshop.store`.
   String subdomain;
 
   Shop({

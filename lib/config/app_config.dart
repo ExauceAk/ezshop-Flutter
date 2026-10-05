@@ -25,19 +25,19 @@ class AppConfig {
   /// Nest API: auth, shops, products, orders, cart and favorites.
   static const String apiUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'https://api-ezshop.exauceakk.com/api/v1',
+    defaultValue: 'https://api.ezshop.store/api/v1',
   );
 
   /// Next storefront, used for theme previews and public shop pages.
   static const String webUrl = String.fromEnvironment(
     'WEB_URL',
-    defaultValue: 'https://ezshop.exauceakk.com',
+    defaultValue: 'https://ezshop.store',
   );
 
   /// Apex domain a shop subdomain is appended to, shown to the seller.
   static const String shopDomain = String.fromEnvironment(
     'SHOP_DOMAIN',
-    defaultValue: 'ezshop.exauceakk.com',
+    defaultValue: 'ezshop.store',
   );
 
   /// Fixed suffix shown at the end of the domain field while the seller types.
@@ -47,14 +47,14 @@ class AppConfig {
   /// serve, so one can change without the other.
   static const String shopSuffix = String.fromEnvironment(
     'SHOP_SUFFIX',
-    defaultValue: '.ezshop.exauceakk.com',
+    defaultValue: '.ezshop.store',
   );
 
   /// Address that opens a shop's storefront.
   ///
   /// The subdomain is put in front of the storefront host: `couz.localhost:3000`
   /// on a desktop browser, `couz.10.122.244.88:3000` from a phone on the same
-  /// network, `couz.ezshop.exauceakk.com` in production. A shop only
+  /// network, `couz.ezshop.store` in production. A shop only
   /// answers on its own subdomain, never on a path.
   static String shopUrl(String subdomain) {
     if (subdomain.isEmpty) return webUrl;
