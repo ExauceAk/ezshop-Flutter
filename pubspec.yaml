@@ -1,7 +1,10 @@
 name: market
 description: "Marketplace app - Buy & Sell"
 publish_to: 'none'
-version: 1.0.0+1
+# versionName+versionCode, read by the build as `flutter.versionName` and
+# `flutter.versionCode`. Bump it with `tool/bump_version.sh` before every
+# release build: Play rejects a bundle whose versionCode it has already seen.
+version: 1.0.1+2
 
 environment:
   sdk: ^3.9.2
