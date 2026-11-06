@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_strings.dart';
-import '../../models/shop_theme_config.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import 'shop_form.dart';
@@ -66,12 +65,23 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
       name: _data.name,
       description: _data.heroSubtitle,
       slug: _data.slug,
-      config: ShopThemeConfig(
-        heroTitle: _data.heroTitle,
-        heroSubtitle: _data.heroSubtitle,
-        aboutTitle: _data.aboutTitle,
-        aboutText: _data.aboutText,
-      ),
+      logoFile: _data.logoFile,
+      bannerFile: _data.bannerFile,
+      config: _data.themeConfig,
+      onConfigChanged: (cfg) {
+        setState(() {
+          _data = _data.copyWith(
+            primaryColor: cfg.primaryColor,
+            accentColor: cfg.accentColor,
+            backgroundColor: cfg.backgroundColor,
+          );
+        });
+      },
+      onThemeChanged: (theme) {
+        setState(() {
+          _data = _data.copyWith(themeId: theme.id);
+        });
+      },
       onSelect: () {},
     );
   }
@@ -93,12 +103,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
       logoUrl: logoUrl,
       bannerUrl: bannerUrl,
       theme: _data.themeId,
-      themeConfig: ShopThemeConfig(
-        heroTitle: _data.heroTitle,
-        heroSubtitle: _data.heroSubtitle,
-        aboutTitle: _data.aboutTitle,
-        aboutText: _data.aboutText,
-      ),
+      themeConfig: _data.themeConfig,
       subdomain: _data.slug,
     );
 

@@ -1,10 +1,14 @@
-/// The storefront content a seller customises on top of their chosen theme.
+/// The storefront content and custom colour palette a seller customises on top
+/// of their chosen theme.
 ///
 /// Mirrors `ShopThemeConfig` in `next/lib/shop/themes.ts` and the
 /// `ShopThemeConfigDto` accepted by the Nest API. Every field is optional: an
-/// empty one falls back to the theme's default copy.
+/// empty one falls back to the theme's default copy or palette.
 class ShopThemeConfig {
   const ShopThemeConfig({
+    this.primaryColor = '',
+    this.accentColor = '',
+    this.backgroundColor = '',
     this.heroEyebrow = '',
     this.heroTitle = '',
     this.heroSubtitle = '',
@@ -17,6 +21,15 @@ class ShopThemeConfig {
     this.contactPhone = '',
     this.contactAddress = '',
   });
+
+  /// Seller-chosen primary brand colour (`#RRGGBB`). Empty means "use theme default".
+  final String primaryColor;
+
+  /// Seller-chosen secondary accent colour (`#RRGGBB`). Empty means "use theme default".
+  final String accentColor;
+
+  /// Seller-chosen storefront background colour (`#RRGGBB`). Empty means "use theme default".
+  final String backgroundColor;
 
   /// Small label above the hero title, e.g. "Boutique indépendante".
   final String heroEyebrow;
@@ -46,12 +59,21 @@ class ShopThemeConfig {
   final String contactPhone;
   final String contactAddress;
 
+  /// True when at least one custom colour override is active.
+  bool get hasCustomColors =>
+      primaryColor.isNotEmpty ||
+      accentColor.isNotEmpty ||
+      backgroundColor.isNotEmpty;
+
   factory ShopThemeConfig.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const ShopThemeConfig();
 
     String read(String key) => json[key]?.toString() ?? '';
 
     return ShopThemeConfig(
+      primaryColor: read('primaryColor'),
+      accentColor: read('accentColor'),
+      backgroundColor: read('backgroundColor'),
       heroEyebrow: read('heroEyebrow'),
       heroTitle: read('heroTitle'),
       heroSubtitle: read('heroSubtitle'),
@@ -70,6 +92,9 @@ class ShopThemeConfig {
   /// clears it server-side instead of sending a blank string.
   Map<String, String> toJson() {
     final map = <String, String>{
+      'primaryColor': primaryColor,
+      'accentColor': accentColor,
+      'backgroundColor': backgroundColor,
       'heroEyebrow': heroEyebrow,
       'heroTitle': heroTitle,
       'heroSubtitle': heroSubtitle,
@@ -87,6 +112,9 @@ class ShopThemeConfig {
   }
 
   ShopThemeConfig copyWith({
+    String? primaryColor,
+    String? accentColor,
+    String? backgroundColor,
     String? heroEyebrow,
     String? heroTitle,
     String? heroSubtitle,
@@ -100,6 +128,9 @@ class ShopThemeConfig {
     String? contactAddress,
   }) {
     return ShopThemeConfig(
+      primaryColor: primaryColor ?? this.primaryColor,
+      accentColor: accentColor ?? this.accentColor,
+      backgroundColor: backgroundColor ?? this.backgroundColor,
       heroEyebrow: heroEyebrow ?? this.heroEyebrow,
       heroTitle: heroTitle ?? this.heroTitle,
       heroSubtitle: heroSubtitle ?? this.heroSubtitle,
@@ -114,4 +145,12 @@ class ShopThemeConfig {
     );
   }
 
+  /// Returns a copy with all custom colour overrides reset to the theme's defaults.
+  ShopThemeConfig clearColors() {
+    return copyWith(
+      primaryColor: '',
+      accentColor: '',
+      backgroundColor: '',
+    );
   }
+}

@@ -6,9 +6,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../config/app_config.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/shop_theme.dart';
+import '../../models/shop_theme_config.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_pick.dart';
 import '../../widgets/mini_theme_preview.dart';
+import 'theme_preview_sheet.dart';
 
 /// Everything the shop form collects.
 class ShopFormData {
@@ -23,6 +25,9 @@ class ShopFormData {
     this.aboutText = '',
     this.slug = '',
     this.themeId = 'atelier',
+    this.primaryColor = '',
+    this.accentColor = '',
+    this.backgroundColor = '',
     this.acceptsOnlinePayment = false,
     this.paymentFields = const ['', '', '', '', ''],
     this.logoFile,
@@ -45,26 +50,40 @@ class ShopFormData {
   final String slug;
   final String themeId;
 
+  /// Optional custom seller palette overrides (`#RRGGBB`). Empty uses the
+  /// chosen theme's native colours.
+  final String primaryColor;
+  final String accentColor;
+  final String backgroundColor;
+
   /// Whether the seller filled in the advanced options.
-  ///
-  /// Off by default: most sellers only negotiate on WhatsApp, and the extra
-  /// fields must not appear before the seller asks for them.
   final bool acceptsOnlinePayment;
 
   /// The five optional detail fields of the advanced section.
-  ///
-  /// Their meaning and where they are stored are still to be decided, so
-  /// nothing is sent to the API yet.
   final List<String> paymentFields;
 
   /// Images picked during this session; null means "keep the existing one".
   final File? logoFile;
   final File? bannerFile;
 
+  bool get hasCustomColors =>
+      primaryColor.isNotEmpty ||
+      accentColor.isNotEmpty ||
+      backgroundColor.isNotEmpty;
+
+  /// Builds the [ShopThemeConfig] payload for previews and API persistence.
+  ShopThemeConfig get themeConfig => ShopThemeConfig(
+        primaryColor: primaryColor,
+        accentColor: accentColor,
+        backgroundColor: backgroundColor,
+        heroTitle: heroTitle,
+        heroSubtitle: heroSubtitle,
+        aboutTitle: aboutTitle,
+        aboutText: aboutText,
+      );
+
   /// Digits of the WhatsApp number, prefix included, used to build the
   /// `wa.me` link and shown in the storefront footer.
-  ///
-  /// The seller types a number, not a link: the link is derived from it.
   String get whatsappDigits =>
       '$countryCode${whatsapp.replaceAll(RegExp(r'[^0-9]'), '')}';
 
@@ -82,6 +101,9 @@ class ShopFormData {
     String? aboutText,
     String? slug,
     String? themeId,
+    String? primaryColor,
+    String? accentColor,
+    String? backgroundColor,
     bool? acceptsOnlinePayment,
     List<String>? paymentFields,
     File? logoFile,
@@ -98,23 +120,27 @@ class ShopFormData {
       aboutText: aboutText ?? this.aboutText,
       slug: slug ?? this.slug,
       themeId: themeId ?? this.themeId,
+      primaryColor: primaryColor ?? this.primaryColor,
+      accentColor: accentColor ?? this.accentColor,
+      backgroundColor: backgroundColor ?? this.backgroundColor,
       acceptsOnlinePayment: acceptsOnlinePayment ?? this.acceptsOnlinePayment,
       paymentFields: paymentFields ?? this.paymentFields,
       logoFile: logoFile ?? this.logoFile,
       bannerFile: bannerFile ?? this.bannerFile,
     );
   }
+
+  /// Resets custom colours back to the theme's native defaults.
+  ShopFormData clearColors() {
+    return copyWith(
+      primaryColor: '',
+      accentColor: '',
+      backgroundColor: '',
+    );
+  }
 }
 
 /// The shop form, shared by the creation and the edit screen.
-///
-/// Both screens used to carry their own copy of these fields, which is how they
-/// drifted apart. One widget also means one place to decide what the seller is
-/// asked, and in what order.
-///
-/// Field order follows the storefront: identity first, then the hero, then the
-/// about section, and the theme choice last because it is the only decision
-/// that needs the preview to make sense.
 class ShopForm extends StatefulWidget {
   const ShopForm({
     super.key,
@@ -129,15 +155,13 @@ class ShopForm extends StatefulWidget {
   final ShopFormData initial;
   final List<ShopTheme> themes;
 
-  /// Fired on every keystroke so a preview can reflect what is being typed.
+  /// Fired on every keystroke or colour/theme selection so the parent screen
+  /// and preview stay in sync.
   final ValueChanged<ShopFormData> onChanged;
 
   final VoidCallback onPreview;
 
   /// Image already stored on the shop, shown until a new one is picked.
-  ///
-  /// Without this the slot looks empty while editing, which reads as if the
-  /// shop had no logo.
   final String existingLogo;
   final String existingBanner;
 
@@ -158,9 +182,6 @@ class _ShopFormState extends State<ShopForm> {
   late final TextEditingController _aboutTitle;
   late final TextEditingController _aboutText;
   late final TextEditingController _slug;
-
-  /// One controller per advanced field, so the five inputs keep their own text
-  /// while the section is hidden.
   late final List<TextEditingController> _payments;
 
   @override
@@ -178,6 +199,22 @@ class _ShopFormState extends State<ShopForm> {
       _data.paymentFields.length,
       (index) => TextEditingController(text: _data.paymentFields[index]),
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant ShopForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initial.themeId != _data.themeId ||
+        widget.initial.primaryColor != _data.primaryColor ||
+        widget.initial.accentColor != _data.accentColor ||
+        widget.initial.backgroundColor != _data.backgroundColor) {
+      _data = _data.copyWith(
+        themeId: widget.initial.themeId,
+        primaryColor: widget.initial.primaryColor,
+        accentColor: widget.initial.accentColor,
+        backgroundColor: widget.initial.backgroundColor,
+      );
+    }
   }
 
   @override
@@ -199,10 +236,6 @@ class _ShopFormState extends State<ShopForm> {
     super.dispose();
   }
 
-  /// The theme currently picked in the grid.
-  ///
-  /// Falls back to the first catalog theme so the domain row always has
-  /// something to draw, even if the stored theme id is unknown.
   ShopTheme get _currentTheme {
     return widget.themes.firstWhere(
       (theme) => theme.id == _data.themeId,
@@ -210,15 +243,14 @@ class _ShopFormState extends State<ShopForm> {
     );
   }
 
+  ShopTheme get _activeTheme =>
+      _currentTheme.applyCustomColors(_data.themeConfig);
+
   void _update(ShopFormData next) {
     setState(() => _data = next);
     widget.onChanged(next);
   }
 
-  /// Returns the advanced fields with [index] set to [value].
-  ///
-  /// The list is rebuilt rather than mutated so [ShopFormData] stays a value
-  /// type and `copyWith` can tell "unchanged" from "cleared".
   List<String> _replacePayment(int index, String value) {
     final next = List<String>.of(_data.paymentFields);
     while (next.length <= index) {
@@ -228,11 +260,6 @@ class _ShopFormState extends State<ShopForm> {
     return next;
   }
 
-  /// Picks an image and frames it before it is stored.
-  ///
-  /// The logo is cropped square because the storefront shows it in a circle,
-  /// and the banner is cropped wide because it fills the hero; an uncropped
-  /// photo is stretched to fit and loses whatever the seller wanted to show.
   Future<void> _pick({required bool isLogo}) async {
     final l10n = context.l10n;
     final file = await pickAndCropImage(
@@ -244,6 +271,108 @@ class _ShopFormState extends State<ShopForm> {
     _update(isLogo
         ? _data.copyWith(logoFile: file)
         : _data.copyWith(bannerFile: file));
+  }
+
+  Future<void> _pickColor({
+    required String title,
+    required Color current,
+    required List<String> swatches,
+    required ValueChanged<String> onSelected,
+  }) async {
+    final controller = TextEditingController(text: colorToHex(current));
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final hex in swatches)
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx, hex),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: parseHexColor(hex) ?? Colors.grey,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colorToHex(current).toUpperCase() ==
+                                  hex.toUpperCase()
+                              ? AppTheme.primary
+                              : Colors.black12,
+                          width: colorToHex(current).toUpperCase() ==
+                                  hex.toUpperCase()
+                              ? 2.5
+                              : 1,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Code Hex (#RRGGBB)',
+                      hintText: '#176B55',
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () {
+                    final parsed = parseHexColor(controller.text);
+                    if (parsed != null) {
+                      Navigator.pop(ctx, colorToHex(parsed));
+                    }
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    if (picked != null) onSelected(picked);
   }
 
   @override
@@ -269,15 +398,20 @@ class _ShopFormState extends State<ShopForm> {
 
           _field(_name, l10n.t('form.name'), lines: 1),
           _phoneField(),
-          // Domain and theme preview share a row: the subdomain is what the
-          // storefront will answer on, and the preview next to it shows what
-          // that storefront will look like.
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: _domainField()),
               const SizedBox(width: 12),
-              MiniThemePreview(theme: _currentTheme, width: 92, height: 104),
+              GestureDetector(
+                onTap: widget.onPreview,
+                child: MiniThemePreview(
+                  theme: _currentTheme,
+                  config: _data.themeConfig,
+                  width: 92,
+                  height: 104,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -312,11 +446,15 @@ class _ShopFormState extends State<ShopForm> {
           const SizedBox(height: 8),
 
           _paymentSection(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
+
+          // Custom brand colour section
+          _colorSection(l10n),
+          const SizedBox(height: 24),
 
           Row(
             children: [
-              _label(l10n.t('form.theme')),
+              _label('${l10n.t('form.theme')} (${widget.themes.length})'),
               const Spacer(),
               TextButton.icon(
                 onPressed: widget.onPreview,
@@ -327,44 +465,28 @@ class _ShopFormState extends State<ShopForm> {
             ],
           ),
           const SizedBox(height: 12),
-          // Vertical grid: the catalog now holds fifteen themes, and a single
-          // horizontal strip hid ten of them behind a swipe nobody makes.
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.82,
+              childAspectRatio: 0.78,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
-            itemCount: widget.themes.length + lockedStorefrontThemes.length,
+            itemCount: widget.themes.length,
             itemBuilder: (context, index) {
-              if (index < widget.themes.length) {
-                final theme = widget.themes[index];
-                return _ThemeCard(
-                  theme: theme,
-                  selected: theme.id == _data.themeId,
-                  onTap: () => _update(_data.copyWith(themeId: theme.id)),
-                );
-              }
-              final locked = lockedStorefrontThemes[index - widget.themes.length];
-              return _LockedThemeCard(
-                theme: locked,
-                onTap: () => ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        l10n.t('theme.comingSoon', {'name': locked.name}),
-                        style: GoogleFonts.poppins(),
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
+              final theme = widget.themes[index];
+              final isSelected = theme.id == _data.themeId;
+              return _ThemeCard(
+                theme: theme,
+                config: isSelected ? _data.themeConfig : null,
+                selected: isSelected,
+                onTap: () => _update(_data.copyWith(themeId: theme.id)),
+                onPreviewTap: () {
+                  _update(_data.copyWith(themeId: theme.id));
+                  widget.onPreview();
+                },
               );
             },
           ),
@@ -373,11 +495,230 @@ class _ShopFormState extends State<ShopForm> {
     );
   }
 
-  /// Optional details, hidden until the seller opts in.
-  ///
-  /// This is an advanced section, not a payment promise: the fields are place
-  /// holders whose meaning is still undecided, so it stays collapsed by default
-  /// and a shop that only sells on WhatsApp is never asked about it.
+  /// Brand colour customisation card with 3 colour channels, ready-made
+  /// palettes, and a reset button.
+  Widget _colorSection(AppStrings l10n) {
+    final active = _activeTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(l10n.t('form.colors.section')),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _data.hasCustomColors ? active.primary : AppTheme.border,
+              width: _data.hasCustomColors ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.t('form.colors.subtitle'),
+                style: GoogleFonts.poppins(
+                  fontSize: 11.5,
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _colorPickerTile(
+                      label: l10n.t('preview.colorPrimary'),
+                      color: active.primary,
+                      onTap: () => _pickColor(
+                        title: l10n.t('preview.colorPrimary'),
+                        current: active.primary,
+                        swatches: kColorSwatchesPrimary,
+                        onSelected: (hex) =>
+                            _update(_data.copyWith(primaryColor: hex)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _colorPickerTile(
+                      label: l10n.t('preview.colorAccent'),
+                      color: active.accent,
+                      onTap: () => _pickColor(
+                        title: l10n.t('preview.colorAccent'),
+                        current: active.accent,
+                        swatches: kColorSwatchesAccent,
+                        onSelected: (hex) =>
+                            _update(_data.copyWith(accentColor: hex)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _colorPickerTile(
+                      label: l10n.t('preview.colorBackground'),
+                      color: active.background,
+                      onTap: () => _pickColor(
+                        title: l10n.t('preview.colorBackground'),
+                        current: active.background,
+                        swatches: kColorSwatchesBackground,
+                        onSelected: (hex) =>
+                            _update(_data.copyWith(backgroundColor: hex)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.t('form.colors.presets'),
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final preset in kPalettePresets)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: GestureDetector(
+                          onTap: () => _update(
+                            _data.copyWith(
+                              primaryColor: preset.primaryHex,
+                              accentColor: preset.accentHex,
+                              backgroundColor: preset.backgroundHex,
+                            ),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(99),
+                              border: Border.all(color: AppTheme.border),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _dot(preset.primary),
+                                const SizedBox(width: 3),
+                                _dot(preset.accent),
+                                const SizedBox(width: 3),
+                                _dot(preset.background, border: true),
+                                const SizedBox(width: 6),
+                                Text(
+                                  preset.name,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (_data.hasCustomColors) ...[
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => _update(_data.clearColors()),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      l10n.t('form.colors.reset'),
+                      style: GoogleFonts.poppins(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.error,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _colorPickerTile({
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black26),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            Text(
+              colorToHex(color),
+              style: GoogleFonts.poppins(
+                fontSize: 9,
+                color: AppTheme.textHint,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dot(Color color, {bool border = false}) {
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: border ? Border.all(color: Colors.black26, width: 0.8) : null,
+      ),
+    );
+  }
+
   Widget _paymentSection() {
     final l10n = context.l10n;
 
@@ -411,7 +752,6 @@ class _ShopFormState extends State<ShopForm> {
         ),
         if (_data.acceptsOnlinePayment) ...[
           const SizedBox(height: 16),
-          // All five fields, numbered as they will appear on the storefront.
           for (var i = 0; i < _payments.length; i++)
             _field(
               _payments[i],
@@ -425,11 +765,6 @@ class _ShopFormState extends State<ShopForm> {
     );
   }
 
-  /// Subdomain entry, with the fixed platform suffix on the same line.
-  ///
-  /// The seller only ever types the part they choose, so the suffix is shown
-  /// inline instead of asking them to remember it; the helper underneath still
-  /// spells out the full address that will actually open.
   Widget _domainField() {
     final l10n = context.l10n;
 
@@ -442,9 +777,11 @@ class _ShopFormState extends State<ShopForm> {
           labelText: l10n.t('form.domain'),
           hintText: l10n.t('form.domainHint'),
           suffixText: AppConfig.shopSuffix,
-          suffixStyle: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+          suffixStyle: const TextStyle(
+              color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
           helperText: l10n.t('form.domainHelper', {
-            'domain': _slug.text.isEmpty ? l10n.t('form.domainHint') : _slug.text,
+            'domain':
+                _slug.text.isEmpty ? l10n.t('form.domainHint') : _slug.text,
             'appDomain': AppConfig.shopDomain,
           }),
           helperMaxLines: 2,
@@ -477,24 +814,19 @@ class _ShopFormState extends State<ShopForm> {
           alignLabelWithHint: lines > 1,
         ),
         onChanged: (value) => _update(_data.copyWith(
-              name: controller == _name ? value : null,
-              slug: controller == _slug ? value : null,
-              heroTitle: controller == _heroTitle ? value : null,
-              heroSubtitle: controller == _heroSubtitle ? value : null,
-              aboutTitle: controller == _aboutTitle ? value : null,
-              aboutText: controller == _aboutText ? value : null,
-              paymentFields: fieldIndex == null
-                  ? null
-                  : _replacePayment(fieldIndex, value),
-            )),
+          name: controller == _name ? value : null,
+          slug: controller == _slug ? value : null,
+          heroTitle: controller == _heroTitle ? value : null,
+          heroSubtitle: controller == _heroSubtitle ? value : null,
+          aboutTitle: controller == _aboutTitle ? value : null,
+          aboutText: controller == _aboutText ? value : null,
+          paymentFields:
+              fieldIndex == null ? null : _replacePayment(fieldIndex, value),
+        )),
       ),
     );
   }
 
-  /// Phone entry with a country prefix.
-  ///
-  /// Sellers type their national number and pick the prefix, instead of
-  /// typing "+221 77..." every time; both parts end up in one stored number.
   Widget _phoneField() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -520,8 +852,8 @@ class _ShopFormState extends State<ShopForm> {
                   for (final code in _countryCodes)
                     DropdownMenuItem(
                       value: code,
-                      child: Text('+$code',
-                          style: GoogleFonts.poppins(fontSize: 14)),
+                      child:
+                          Text('+$code', style: GoogleFonts.poppins(fontSize: 14)),
                     ),
                 ],
                 onChanged: (value) {
@@ -541,8 +873,7 @@ class _ShopFormState extends State<ShopForm> {
                 labelText: context.l10n.t('form.whatsapp'),
                 hintText: context.l10n.t('form.whatsappHint'),
               ),
-              onChanged: (value) =>
-                  _update(_data.copyWith(whatsapp: value)),
+              onChanged: (value) => _update(_data.copyWith(whatsapp: value)),
             ),
           ),
         ],
@@ -558,8 +889,6 @@ class _ShopFormState extends State<ShopForm> {
         ),
       );
 
-  /// Groups a part of the storefront, so the seller knows where the text will
-  /// end up instead of guessing.
   Widget _sectionTitle(String text) => Padding(
         padding: const EdgeInsets.only(bottom: 14),
         child: Row(
@@ -585,10 +914,6 @@ class _ShopFormState extends State<ShopForm> {
       );
 }
 
-/// Image picker slot.
-///
-/// Shows the file picked in this session, or the image already stored on the
-/// shop, so editing a shop never blanks its logo by omission.
 class _ImageSlot extends StatelessWidget {
   const _ImageSlot({
     required this.height,
@@ -603,10 +928,7 @@ class _ImageSlot extends StatelessWidget {
   final double? width;
   final double radius;
   final File? file;
-
-  /// Image already stored server-side, used until a new one is picked.
   final String url;
-
   final VoidCallback onTap;
 
   @override
@@ -628,8 +950,6 @@ class _ImageSlot extends StatelessWidget {
         child: file != null
             ? Image.file(file!, fit: BoxFit.cover)
             : url.isNotEmpty
-                // The image already saved on the shop, so editing does not
-                // pretend the shop has no logo.
                 ? Image.network(
                     url,
                     fit: BoxFit.cover,
@@ -663,16 +983,22 @@ class _Placeholder extends StatelessWidget {
 class _ThemeCard extends StatelessWidget {
   const _ThemeCard({
     required this.theme,
+    this.config,
     required this.selected,
     required this.onTap,
+    required this.onPreviewTap,
   });
 
   final ShopTheme theme;
+  final ShopThemeConfig? config;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback onPreviewTap;
 
   @override
   Widget build(BuildContext context) {
+    final active = theme.applyCustomColors(config);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -681,103 +1007,104 @@ class _ThemeCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? theme.primaryColor : AppTheme.border,
+            color: selected ? active.primaryColor : AppTheme.border,
             width: selected ? 2.5 : 1,
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Real miniature instead of colour dots: the dots were identical
-            // from one theme to the next, so the card said nothing about the
-            // hero shape or product layout the seller is actually choosing.
             Expanded(
-              child: Center(
-                child: MiniThemePreview(theme: theme, width: 86, height: 86),
+              child: Stack(
+                children: [
+                  Center(
+                    child: MiniThemePreview(
+                      theme: theme,
+                      config: config,
+                      width: 102,
+                      height: 92,
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: onPreviewTap,
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppTheme.border),
+                        ),
+                        child: Icon(
+                          Icons.visibility_outlined,
+                          size: 14,
+                          color: selected
+                              ? active.primaryColor
+                              : AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    theme.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: active.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: active.accent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
             Text(
-              theme.name,
+              theme.category,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.poppins(
+                fontSize: 9.5,
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: AppTheme.textPrimary,
+                color: active.primaryColor,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 1),
             Text(
               theme.description,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.poppins(
-                fontSize: 10,
-                height: 1.3,
+                fontSize: 9.5,
+                height: 1.25,
                 color: AppTheme.textHint,
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-/// A theme that is announced but not built yet.
-///
-/// Greyed out, without palette or preview image, so nothing about it can be
-/// mistaken for a theme the storefront already renders. Tapping only says when
-/// it is coming.
-class _LockedThemeCard extends StatelessWidget {
-  const _LockedThemeCard({required this.theme, required this.onTap});
-
-  final LockedShopTheme theme;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF2F2F4),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 26,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.lock_outline_rounded,
-                  size: 16,
-                  color: AppTheme.textHint,
-                ),
-              ),
-            ),
-            const Spacer(),
-            Text(
-              theme.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              context.l10n.t('theme.locked'),
-              style: GoogleFonts.poppins(fontSize: 10, color: AppTheme.textHint),
             ),
           ],
         ),

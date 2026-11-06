@@ -12,7 +12,9 @@ class PreviewProduct {
     required this.imageUrl,
     this.oldPrice,
     this.isNeuf = true,
+    this.isNegotiable = false,
     this.isAvailable = true,
+    this.quantity = 5,
     this.category = '',
   });
 
@@ -24,50 +26,93 @@ class PreviewProduct {
   final String? oldPrice;
   final String imageUrl;
   final bool isNeuf;
+  final bool isNegotiable;
   final bool isAvailable;
+  final int quantity;
   final String category;
 }
 
 /// Sample catalogue, mirroring the one the Next preview route uses so both
-/// renderers show the same thing.
+/// renderers show the exact same 6 realistic items.
 const List<PreviewProduct> samplePreviewProducts = [
   PreviewProduct(
-    name: 'Bouteille Nordique',
+    name: 'Carafe Thermique Nordique',
     description:
-        'Une bouteille réutilisable en acier inoxydable, pensée pour accompagner vos journées.',
-    price: '4385',
+        'Carafe isolante à double paroi en acier brossé et bouchon en chêne naturel, idéale pour conserver vos boissons chaudes ou fraîches toute la journée.',
+    price: '14500',
     imageUrl:
-        'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=600&q=80',
-    category: 'Maison',
+        'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=800&q=80',
+    isNeuf: true,
+    isNegotiable: false,
+    isAvailable: true,
+    quantity: 12,
+    category: 'Art de la Table',
   ),
   PreviewProduct(
-    name: 'Cocotte Alba',
+    name: 'Cocotte en Fonte Émaillée Alba',
     description:
-        'Une cocotte compacte au design intemporel pour préparer facilement vos plats.',
-    price: '7835',
-    oldPrice: '9000',
+        'Cocotte artisanale à diffusion thermique homogène pour mijoter, rôtir et servir directement à table avec élégance.',
+    price: '28500',
+    oldPrice: '34000',
     imageUrl:
-        'https://images.unsplash.com/photo-1584990347449-ae9f6c4d4a3f?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=800&q=80',
+    isNeuf: true,
+    isNegotiable: true,
+    isAvailable: true,
+    quantity: 8,
     category: 'Cuisine',
   ),
   PreviewProduct(
-    name: 'Lampe Kanso',
+    name: 'Lampe d’Ambiance Kanso',
     description:
-        'Une lampe douce et chaleureuse pour créer une ambiance apaisante dans votre intérieur.',
-    price: '8990',
+        'Luminaire sculptural à lumière chaude tamisée, doté d’un variateur tactile et d’un socle en métal sablé.',
+    price: '22000',
     imageUrl:
-        'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80',
+    isNeuf: true,
+    isNegotiable: false,
+    isAvailable: true,
+    quantity: 5,
+    category: 'Luminaires',
+  ),
+  PreviewProduct(
+    name: 'Plateau de Service Nami en Noyer',
+    description:
+        'Façonné dans une seule pièce de bois massif avec rebords adoucis à la main et finition à l’huile naturelle.',
+    price: '11500',
+    oldPrice: '13500',
+    imageUrl:
+        'https://images.unsplash.com/photo-1603199506016-b9a594b593c0?auto=format&fit=crop&w=800&q=80',
+    isNeuf: true,
+    isNegotiable: true,
+    isAvailable: true,
+    quantity: 6,
+    category: 'Art de la Table',
+  ),
+  PreviewProduct(
+    name: 'Vase Minéral en Grès Brut',
+    description:
+        'Pièce tournée à la main présentant une texture sablée naturelle, pensée pour accueillir bouquets secs ou fleurs fraîches.',
+    price: '16900',
+    imageUrl:
+        'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=800&q=80',
     isNeuf: false,
+    isNegotiable: true,
+    isAvailable: true,
+    quantity: 3,
     category: 'Décoration',
   ),
   PreviewProduct(
-    name: 'Plateau Nami',
+    name: 'Coffret Infusion & Céramique',
     description:
-        'Un plateau en bois aux lignes sobres, idéal pour servir le petit déjeuner ou vos boissons.',
-    price: '3450',
+        'Assortiment de deux tasses en grès émaillé accompagnées de leur infuseur en inox fin.',
+    price: '19500',
     imageUrl:
-        'https://images.unsplash.com/photo-1603199506016-b9a594b593c0?auto=format&fit=crop&w=600&q=80',
+        'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=800&q=80',
+    isNeuf: true,
+    isNegotiable: false,
     isAvailable: false,
-    category: 'Maison',
+    quantity: 0,
+    category: 'Art de la Table',
   ),
 ];

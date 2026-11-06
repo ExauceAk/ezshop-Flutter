@@ -233,8 +233,10 @@ class AppProvider extends ChangeNotifier {
   /// the shop exists, and on a phone that may not reach the storefront server.
   List<ShopTheme> get themes => storefrontThemes;
 
-  /// Accent colour of a shop, taken from its theme.
-  Color themeColorOf(Shop shop) => getStorefrontTheme(shop.theme).primaryColor;
+  /// Accent colour of a shop, taken from its custom palette or its theme.
+  Color themeColorOf(Shop shop) => getStorefrontTheme(shop.theme)
+      .applyCustomColors(shop.themeConfig)
+      .primaryColor;
 
   /// The catalog entry of a shop's theme, for its name and description.
   ShopTheme themeOf(Shop shop) => getStorefrontTheme(shop.theme);

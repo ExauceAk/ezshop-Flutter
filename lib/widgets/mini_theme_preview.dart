@@ -1,162 +1,388 @@
 import 'package:flutter/material.dart';
 
 import '../models/shop_theme.dart';
+import '../models/shop_theme_config.dart';
 
 /// A real miniature of a storefront theme.
 ///
-/// The picker used to show three colour dots, which said nothing about the
-/// thing the seller is actually choosing: three dots look the same whether the
-/// hero is a full-bleed overlay or a two-column split. This draws the theme's
-/// structure — header, hero shape, product area — at a size small enough to sit
-/// next to a form field, using the theme's own palette, fonts and radius so the
-/// choice is made on what the storefront will look like.
-///
-/// Deliberately built from blocks rather than from [StorefrontPreview]: that
-/// widget is a full scrolling storefront and would be far too heavy to draw
-/// once per theme card.
+/// Draws the theme's signature architecture — header, hero shape, product area
+/// — at a size small enough to sit on a picker card or next to the domain
+/// field, using the theme's active palette (including any custom seller
+/// colours passed in [config]).
 class MiniThemePreview extends StatelessWidget {
   const MiniThemePreview({
     super.key,
     required this.theme,
+    this.config,
     this.width = 96,
     this.height = 118,
   });
 
   final ShopTheme theme;
+  final ShopThemeConfig? config;
   final double width;
   final double height;
 
   @override
   Widget build(BuildContext context) {
+    final active = theme.applyCustomColors(config);
+
     return SizedBox(
       width: width,
       height: height,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: ColoredBox(
-          color: theme.background,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _header(),
-              _hero(),
-              Expanded(child: _products()),
-              _footer(),
-            ],
+        borderRadius: BorderRadius.circular(10),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: active.background,
+            border: Border.all(color: active.border, width: 1),
+            borderRadius: BorderRadius.circular(10),
           ),
+          child: _buildArchitecture(active),
         ),
       ),
     );
   }
 
-  /// Logo dot plus two nav dashes.
-  Widget _header() {
+  Widget _buildArchitecture(ShopTheme t) {
+    if (t.id == 'super-marche') {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            width: 22,
+            color: t.surface,
+            padding: const EdgeInsets.all(4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _dot(t.primary, 7),
+                const SizedBox(height: 5),
+                _bar(width: 14, height: 2.5, color: t.primary),
+                const SizedBox(height: 3),
+                _bar(width: 12, height: 2.5, color: t.muted),
+                const SizedBox(height: 3),
+                _bar(width: 13, height: 2.5, color: t.muted),
+              ],
+            ),
+          ),
+          Container(width: 0.7, color: t.border),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  height: 24,
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: t.primary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  alignment: Alignment.centerLeft,
+                  child: _bar(width: 28, height: 3.5, color: Colors.white),
+                ),
+                Expanded(child: _products(t)),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Stack(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _header(t),
+            _hero(t),
+            Expanded(child: _products(t)),
+            _footer(t),
+          ],
+        ),
+        if (t.id == 'sneaker-drop')
+          Positioned(
+            bottom: 4,
+            left: 14,
+            right: 14,
+            child: Container(
+              height: 9,
+              decoration: BoxDecoration(
+                color: t.surface,
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: t.primary, width: 1),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _header(ShopTheme t) {
+    if (t.id == 'gazette' || t.id == 'editorial') {
+      return Container(
+        height: 18,
+        decoration: BoxDecoration(
+          color: t.surface,
+          border: Border(bottom: BorderSide(color: t.border, width: 1)),
+        ),
+        alignment: Alignment.center,
+        child: _bar(width: 36, height: 4, color: t.textColor),
+      );
+    }
+
+    if (t.id == 'tribal') {
+      return Container(
+        height: 16,
+        decoration: BoxDecoration(
+          color: t.surface,
+          border: Border(bottom: BorderSide(color: t.textColor, width: 1.2)),
+        ),
+        child: Row(
+          children: [
+            Container(width: 24, color: t.primary),
+            Expanded(child: Center(child: _bar(width: 18, height: 3, color: t.textColor))),
+            Container(width: 18, color: t.accent),
+          ],
+        ),
+      );
+    }
+
     return Container(
-      height: 18,
-      color: theme.surface,
+      height: 16,
+      color: t.surface,
       padding: const EdgeInsets.symmetric(horizontal: 5),
       child: Row(
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: theme.primary, shape: BoxShape.circle),
-          ),
+          _dot(t.primary, 7),
           const SizedBox(width: 4),
           Expanded(
             child: Row(
               children: [
-                _bar(width: 14, color: theme.textColor.withOpacity(0.55)),
+                _bar(width: 14, color: t.textColor.withValues(alpha: 0.65)),
                 const SizedBox(width: 3),
-                _bar(width: 10, color: theme.muted.withOpacity(0.7)),
+                _bar(width: 10, color: t.muted.withValues(alpha: 0.7)),
               ],
             ),
           ),
+          _dot(t.accent, 5),
         ],
       ),
     );
   }
 
-  /// The hero, drawn in the shape the theme actually uses.
-  Widget _hero() {
+  Widget _hero(ShopTheme t) {
+    switch (t.id) {
+      case 'bento':
+        return SizedBox(
+          height: 38,
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: t.primary,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    alignment: Alignment.bottomLeft,
+                    child: _bar(width: 22, height: 3.5, color: Colors.white),
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: t.accent,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: t.surface,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: t.border, width: 0.6),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+      case 'vendome':
+        return SizedBox(
+          height: 36,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+            child: Row(
+              children: [
+                Expanded(child: _imageBlock(t)),
+                const SizedBox(width: 3),
+                Expanded(
+                  child: Container(
+                    color: t.surface,
+                    alignment: Alignment.center,
+                    child: _bar(width: 16, height: 3.5, color: t.textColor),
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Expanded(child: _imageBlock(t)),
+              ],
+            ),
+          ),
+        );
+
+      case 'aqua':
+      case 'orbit':
+        return Container(
+          height: 38,
+          color: t.surface,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _bar(width: 24, height: 4, color: t.textColor),
+                    const SizedBox(height: 3),
+                    _bar(width: 16, height: 3, color: t.primary),
+                  ],
+                ),
+              ),
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: [t.primary, t.accent]),
+                  border: Border.all(color: t.border, width: 1.5),
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'baobab':
+        return Container(
+          height: 38,
+          color: t.surface,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _bar(width: 24, height: 4, color: t.textColor),
+                    const SizedBox(height: 3),
+                    _bar(width: 16, height: 3, color: t.primary),
+                  ],
+                ),
+              ),
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(99)),
+                child: SizedBox(width: 24, height: 28, child: _imageBlock(t)),
+              ),
+            ],
+          ),
+        );
+
+      default:
+        break;
+    }
+
     final text = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _bar(width: 26, height: 5, color: theme.textColor),
+        _bar(width: 24, height: 4.5, color: t.textColor),
         const SizedBox(height: 3),
-        _bar(width: 34, height: 4, color: theme.muted),
-        const SizedBox(height: 4),
-        _bar(width: 18, height: 5, color: theme.primary),
+        _bar(width: 30, height: 3, color: t.muted),
+        const SizedBox(height: 3),
+        _bar(width: 16, height: 4, color: t.primary),
       ],
     );
 
-    switch (theme.heroStyle) {
+    switch (t.heroStyle) {
       case HeroStyle.stacked:
-        // Text only: no image block at all, which is what tells this theme
-        // apart from the others at a glance.
         return Container(
-          height: 38,
-          color: theme.surface,
-          padding: const EdgeInsets.all(6),
-          alignment: Alignment.centerLeft,
-          child: text,
+          height: 36,
+          color: t.surface,
+          padding: const EdgeInsets.all(5),
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _bar(width: 34, height: 4.5, color: t.textColor),
+              const SizedBox(height: 3),
+              _bar(width: 22, height: 3, color: t.accent),
+            ],
+          ),
         );
       case HeroStyle.split:
         return SizedBox(
-          height: 38,
+          height: 36,
           child: Row(
             children: [
-              Expanded(child: _imageBlock()),
               Expanded(
                 child: Container(
-                  color: theme.surface,
+                  color: t.surface,
                   padding: const EdgeInsets.all(5),
                   alignment: Alignment.centerLeft,
                   child: text,
                 ),
               ),
+              Expanded(child: _imageBlock(t)),
             ],
           ),
         );
       case HeroStyle.strip:
-        // Short band: logo and text side by side.
         return Container(
           height: 24,
-          color: theme.primary,
+          color: t.primary,
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Row(
             children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: theme.surface,
-                  shape: BoxShape.circle,
-                ),
-              ),
+              _dot(t.surface, 9),
               const SizedBox(width: 5),
-              Expanded(child: _bar(width: 24, height: 4, color: theme.surface)),
+              Expanded(child: _bar(width: 24, height: 3.5, color: t.surface)),
             ],
           ),
         );
       case HeroStyle.overlay:
-        // Text drawn over the image, which is what the real hero does.
         return SizedBox(
-          height: 42,
+          height: 38,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              _imageBlock(),
+              _imageBlock(t),
               Padding(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(5),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    _bar(width: 26, height: 5, color: Colors.white),
-                    const SizedBox(height: 3),
-                    _bar(width: 18, height: 4, color: Colors.white70),
+                    _bar(width: 26, height: 4.5, color: Colors.white),
+                    const SizedBox(height: 2.5),
+                    _bar(width: 18, height: 3.5, color: Colors.white70),
                   ],
                 ),
               ),
@@ -166,107 +392,100 @@ class MiniThemePreview extends StatelessWidget {
     }
   }
 
-  Widget _imageBlock() => DecoratedBox(
+  Widget _imageBlock(ShopTheme t) => DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [theme.primary, theme.accent],
+            colors: [t.primary, t.accent],
           ),
         ),
       );
 
-  /// Grid of tiles or stacked rows, following [ShopTheme.productLayout].
-  Widget _products() {
-    if (theme.productLayout == ProductLayout.list) {
+  Widget _products(ShopTheme t) {
+    if (t.productLayout == ProductLayout.list) {
       return Padding(
-        padding: const EdgeInsets.all(5),
+        padding: const EdgeInsets.all(4),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: List.generate(
             3,
-            (index) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: [
-                  _tile(width: 14, height: 12),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _bar(width: 22, height: 3, color: theme.textColor),
-                        const SizedBox(height: 2),
-                        _bar(width: 14, height: 3, color: theme.primary),
-                      ],
-                    ),
+            (_) => Row(
+              children: [
+                Container(
+                  width: 11,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: t.surface,
+                    borderRadius: BorderRadius.circular(2),
+                    border: Border.all(color: t.border, width: 0.6),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 3),
+                Expanded(
+                  child: _bar(width: 20, height: 2.5, color: t.textColor),
+                ),
+                const SizedBox(width: 3),
+                _bar(width: 10, height: 2.5, color: t.primary),
+              ],
             ),
           ),
         ),
       );
     }
 
-    // Grid: the column count is the theme's, so a two-column storefront reads
-    // differently from a four-column one.
-    final columns = theme.columns.clamp(2, 4);
+    final columns = t.columns.clamp(2, 3);
     return Padding(
-      padding: const EdgeInsets.all(5),
+      padding: const EdgeInsets.all(4),
       child: GridView.count(
         crossAxisCount: columns,
         mainAxisSpacing: 3,
         crossAxisSpacing: 3,
         physics: const NeverScrollableScrollPhysics(),
-        children: List.generate(columns * 2, (_) => _tile(width: double.infinity, height: null)),
+        children: List.generate(
+          columns * 2,
+          (_) => _tile(t),
+        ),
       ),
     );
   }
 
-  /// One product tile, styled by [ShopTheme.cardStyle].
-  Widget _tile({required double width, double? height}) {
-    final radius = BorderRadius.circular(theme.radius * 0.4);
+  Widget _tile(ShopTheme t) {
+    final radius = BorderRadius.circular((t.radius * 0.25).clamp(0, 8));
 
     return Container(
-      width: width,
       decoration: BoxDecoration(
+        color: t.surface,
         borderRadius: radius,
-        // Bordered and framed draw an outline; elevated and minimal do not, so
-        // the two families stay distinguishable at this size.
-        border: switch (theme.cardStyle) {
-          CardStyle.bordered || CardStyle.framed =>
-            Border.all(color: theme.border, width: 0.5),
-          _ => null,
-        },
+        border: Border.all(color: t.border, width: 0.6),
       ),
+      padding: const EdgeInsets.all(2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: theme.surface,
+                color: t.primary.withValues(alpha: 0.14),
                 borderRadius: radius,
-                // The framed style insets the image inside the card.
-                border: theme.cardStyle == CardStyle.framed
-                    ? Border.all(color: theme.border, width: 0.5)
-                    : null,
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 2, left: 2, right: 2),
-            child: _bar(width: double.infinity, height: 2.5, color: theme.primary),
-          ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1.5),
+          _bar(width: double.infinity, height: 2, color: t.primary),
         ],
       ),
     );
   }
 
-  Widget _footer() => Container(height: 8, color: theme.surface);
+  Widget _footer(ShopTheme t) => Container(height: 6, color: t.surface);
 
-  /// A rounded rectangle standing in for a line of text.
+  Widget _dot(Color color, double size) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      );
+
   Widget _bar({
     required double width,
     double height = 3,

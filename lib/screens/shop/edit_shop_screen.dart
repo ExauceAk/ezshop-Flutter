@@ -47,6 +47,9 @@ class _EditShopScreenState extends State<EditShopScreen> {
       aboutText: widget.shop.themeConfig.aboutText,
       slug: widget.shop.subdomain,
       themeId: widget.shop.theme,
+      primaryColor: widget.shop.themeConfig.primaryColor,
+      accentColor: widget.shop.themeConfig.accentColor,
+      backgroundColor: widget.shop.themeConfig.backgroundColor,
     );
   }
 
@@ -110,18 +113,29 @@ class _EditShopScreenState extends State<EditShopScreen> {
       slug: widget.shop.subdomain,
       logoUrl: widget.shop.logoUrl,
       bannerUrl: widget.shop.bannerUrl,
+      logoFile: _data.logoFile,
+      bannerFile: _data.bannerFile,
       config: _config,
+      onConfigChanged: (cfg) {
+        setState(() {
+          _data = _data.copyWith(
+            primaryColor: cfg.primaryColor,
+            accentColor: cfg.accentColor,
+            backgroundColor: cfg.backgroundColor,
+          );
+        });
+      },
+      onThemeChanged: (theme) {
+        setState(() {
+          _data = _data.copyWith(themeId: theme.id);
+        });
+      },
       actionLabel: context.l10n.t('form.preview.apply'),
       onSelect: () {},
     );
   }
 
-  ShopThemeConfig get _config => ShopThemeConfig(
-        heroTitle: _data.heroTitle,
-        heroSubtitle: _data.heroSubtitle,
-        aboutTitle: _data.aboutTitle,
-        aboutText: _data.aboutText,
-      );
+  ShopThemeConfig get _config => _data.themeConfig;
 
   Future<void> _handleSave(AppProvider provider) async {
     final messenger = ScaffoldMessenger.of(context);
