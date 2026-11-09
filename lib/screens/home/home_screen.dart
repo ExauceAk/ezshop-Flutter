@@ -21,17 +21,21 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              _buildCreateShopBanner(),
-              _buildConditionToggle(),
-              _buildPopularProducts(),
-              _buildPopularShops(),
-              const SizedBox(height: 20),
-            ],
+        child: RefreshIndicator(
+          onRefresh: () => context.read<AppProvider>().refresh(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                _buildCreateShopBanner(),
+                _buildConditionToggle(),
+                _buildPopularProducts(),
+                _buildPopularShops(),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),

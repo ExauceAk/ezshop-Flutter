@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../l10n/app_strings.dart';
-import '../theme/app_theme.dart';
+import '../utils/app_toast.dart';
 
 /// Full-screen image cropper.
 ///
@@ -85,7 +85,16 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _cropping ? null : _crop,
-                  child: Text(l10n.t('crop.validate')),
+                  child: _cropping
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(l10n.t('crop.validate')),
                 ),
               ),
             ),
@@ -104,16 +113,7 @@ class _ImageCropScreenState extends State<ImageCropScreen> {
       case CropFailure(:final cause):
         if (mounted) {
           setState(() => _cropping = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${l10n.t('crop.failed')} : $cause'),
-              backgroundColor: AppTheme.error,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
+          AppToast.error('${l10n.t('crop.failed')} : $cause');
         }
       case CropSuccess(:final croppedImage):
         final file = await _writeTempFile(croppedImage);

@@ -18,6 +18,7 @@ import 'create_shop_screen.dart';
 import 'edit_shop_screen.dart';
 import 'shop_webview_screen.dart';
 import '../../config/app_config.dart';
+import '../../utils/app_toast.dart';
 import '../../utils/price_format.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -29,6 +30,8 @@ class ShopScreen extends StatefulWidget {
 
 class _ShopScreenState extends State<ShopScreen> {
   Shop? _selectedShop;
+  bool _loadingDeleteShop = false;
+  String? _deletingProductId;
 
   /// Illustration violette servant de fond aux écrans de boutique.
   static const _backdropAsset = 'assets/images/storefront-illustration-preview.png';
@@ -43,7 +46,12 @@ class _ShopScreenState extends State<ShopScreen> {
             final userShops = provider.getUserShops();
 
             if (userShops.isEmpty) return _buildCreateShopView();
-            if (_selectedShop != null) return _buildShopDetailView(_selectedShop!, provider);
+            final liveShop = _selectedShop != null
+                ? provider.getShopById(_selectedShop!.id)
+                : null;
+            if (liveShop != null) {
+              return _buildShopDetailView(liveShop, provider);
+            }
             return _buildShopListView(userShops, provider);
           },
         ),
@@ -165,11 +173,15 @@ class _ShopScreenState extends State<ShopScreen> {
         ),
         const SizedBox(height: 16),
         Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            itemCount: shops.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 14),
-            itemBuilder: (context, index) => _buildShopCard(shops[index], provider),
+          child: RefreshIndicator(
+            onRefresh: () => provider.invalidateAfterMutation(),
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              itemCount: shops.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 14),
+              itemBuilder: (context, index) => _buildShopCard(shops[index], provider),
+            ),
           ),
         ),
         Container(
@@ -203,7 +215,7 @@ class _ShopScreenState extends State<ShopScreen> {
     // Colours et noms viennent du catalogue de thèmes, plus d'une table en dur.
     final accent = provider.themeColorOf(shop);
     final theme = provider.themeOf(shop);
-    final themeLabel = theme?.name ?? shop.theme;
+    final themeLabel = theme.name;
 
     return GestureDetector(
       onTap: () {
@@ -378,26 +390,6 @@ class _ShopScreenState extends State<ShopScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              // Template badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: accent.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      (theme?.name ?? shop.theme).toUpperCase(),
-                      style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w800, color: accent),
-                    ),
-                    const SizedBox(width: 2),
-                    Icon(Icons.keyboard_arrow_down_rounded, color: accent, size: 16),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
               // Ouvre l'éditeur de boutique (thème, logo, textes)
               GestureDetector(
                 onTap: () => Navigator.push(
@@ -405,12 +397,27 @@ class _ShopScreenState extends State<ShopScreen> {
                   MaterialPageRoute(builder: (_) => EditShopScreen(shop: shop)),
                 ),
                 child: Container(
-                  width: 40, height: 40,
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: accent.withOpacity(0.1),
+                    color: accent.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.tune_rounded, size: 20, color: accent),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.tune_rounded, size: 18, color: accent),
+                      const SizedBox(width: 6),
+                      Text(
+                        l10n.t('shop.detail.edit'),
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: accent,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -432,89 +439,95 @@ class _ShopScreenState extends State<ShopScreen> {
 
         // ─── Scrollable content ───
         Expanded(
-          child: CustomScrollView(
-            slivers: [
-              // ─── Shop banner card ───
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(22),
-                      boxShadow: [
-                        BoxShadow(color: accent.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 8)),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
+          child: RefreshIndicator(
+            onRefresh: () => provider.invalidateAfterMutation(shopId: shop.id),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // ─── Shop banner card ───
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: [
+                          BoxShadow(color: accent.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 8)),
+                        ],
+                      ),
                       child: SizedBox(
                         width: double.infinity,
                         height: 200,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            // Full background image
-                            Image.asset(
-                              _backdropAsset,
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
-                            // Content overlay
-                            Padding(
-                              padding: const EdgeInsets.all(22),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Shop icon + name + rating
-                                  Row(
-                                    children: [
-                                      _buildShopLogo(shop, size: 64, radius: 18),
-                                      const SizedBox(width: 18),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(shop.name,
-                                                style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
-                                            const SizedBox(height: 4),
-                                            Text('${shop.productCount} produits',
-                                                style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withOpacity(0.85))),
-                                          ],
-                                        ),
+                        child: _buildVioletBackdrop(
+                          borderRadius: BorderRadius.circular(22),
+                          imageUrl: shop.bannerUrl.isNotEmpty ? shop.bannerUrl : null,
+                          child: Padding(
+                            padding: const EdgeInsets.all(22),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Shop icon + name + rating
+                                Row(
+                                  children: [
+                                    _buildShopLogo(shop, size: 64, radius: 18),
+                                    const SizedBox(width: 18),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(shop.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            l10n.t('shop.card.products', {
+                                              'count': '${shopProducts.length}',
+                                            }),
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 13,
+                                              color: Colors.white.withOpacity(0.85),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 18),
-                                  // Meta chips row
-                                  Row(
-                                    children: [
-                                      if (shop.subdomain.isNotEmpty)
-                                        _buildDetailMetaChip(
-                                          Icons.language_rounded,
-                                          AppConfig.shopDisplayUrl(shop.subdomain),
-                                          l10n.t('shop.detail.viewShop'),
-                                          onTap: () => _openShopWebView(shop),
-                                        ),
-                                      if (shop.subdomain.isNotEmpty) const SizedBox(width: 10),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 18),
+                                // Meta chips row
+                                Row(
+                                  children: [
+                                    if (shop.subdomain.isNotEmpty)
                                       _buildDetailMetaChip(
-                                        Icons.palette_rounded,
-                                        theme?.name ?? shop.theme,
-                                        l10n.t('shop.detail.themeActive'),
+                                        Icons.language_rounded,
+                                        AppConfig.shopDisplayUrl(shop.subdomain),
+                                        l10n.t('shop.detail.viewShop'),
+                                        onTap: () => _openShopWebView(shop),
                                       ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                                    if (shop.subdomain.isNotEmpty) const SizedBox(width: 10),
+                                    _buildDetailMetaChip(
+                                      Icons.palette_rounded,
+                                      theme.name,
+                                      l10n.t('shop.detail.themeActive'),
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => EditShopScreen(shop: shop),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
               // ─── Boost banner ───
               SliverToBoxAdapter(
@@ -683,6 +696,7 @@ class _ShopScreenState extends State<ShopScreen> {
             ],
           ),
         ),
+        ),
 
       ],
     );
@@ -721,8 +735,17 @@ Widget _buildDangerZone(Shop shop) {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () => _confirmDeleteShop(shop),
-              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              onPressed: _loadingDeleteShop ? null : () => _confirmDeleteShop(shop),
+              icon: _loadingDeleteShop
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.error,
+                      ),
+                    )
+                  : const Icon(Icons.delete_outline_rounded, size: 18),
               label: Text(l10n.t('shop.detail.danger.delete')),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.error,
@@ -745,16 +768,12 @@ Widget _buildDangerZone(Shop shop) {
 }
 
 /// Asks before deleting the shop, saying exactly what goes with it.
-///
-/// Two steps on purpose: the counts are fetched first so the dialog can name
-/// them, because "your products will be deleted" is not the same warning as
-/// "12 products and 3 orders will be deleted". The dialog then asks for the
-/// shop name to be typed, which is the only confirmation that survives a
-/// mis-tap on the second dialog too.
 Future<void> _confirmDeleteShop(Shop shop) async {
+  if (_loadingDeleteShop) return;
   final l10n = context.l10n;
   final provider = context.read<AppProvider>();
-  final messenger = ScaffoldMessenger.of(context);
+
+  setState(() => _loadingDeleteShop = true);
 
   // The counts come from the API so the warning cannot drift from what will
   // actually be removed.
@@ -764,11 +783,14 @@ Future<void> _confirmDeleteShop(Shop shop) async {
   } on ApiException {
     preview = null;
   }
+
   if (!mounted) return;
+  setState(() => _loadingDeleteShop = false);
 
   final nameController = TextEditingController();
-  final typed = await showDialog<bool>(
+  final deleted = await showDialog<bool>(
     context: context,
+    barrierDismissible: false,
     builder: (ctx) => _DeleteShopDialog(
       shop: shop,
       preview: preview,
@@ -776,30 +798,12 @@ Future<void> _confirmDeleteShop(Shop shop) async {
     ),
   );
   nameController.dispose();
-  if (typed != true || !mounted) return;
+  if (deleted != true || !mounted) return;
 
-  final deleted = await provider.deleteShop(shop.id);
-  if (!mounted) return;
-
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text(
-        deleted
-            ? l10n.t('shop.detail.danger.done')
-            : (provider.dataError ?? l10n.t('shop.detail.danger.failed')),
-        style: GoogleFonts.poppins(),
-      ),
-      backgroundColor: deleted ? AppTheme.success : AppTheme.error,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    ),
-  );
-
-  if (!deleted || !mounted) return;
+  AppToast.success(l10n.t('shop.detail.danger.done'));
 
   // The shop is gone: leave its page instead of showing an empty shell.
-  if (mounted) setState(() => _selectedShop = null);
-  if (mounted) Navigator.of(context).maybePop();
+  setState(() => _selectedShop = null);
 }
 
 // ─── Orders buyers placed for the products of this shop ───
@@ -899,43 +903,70 @@ Future<void> _confirmDeleteShop(Shop shop) async {
   /// Asks before deleting: the product disappears from the storefront at once
   /// and there is no undo in the app.
   Future<void> _confirmDelete(Product product) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.t('product.delete.title')),
-        content: Text(context.l10n.t('product.delete.body', {'name': product.name})),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(context.l10n.t('common.cancel')),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.l10n.t('product.menu.delete'),
-                style: const TextStyle(color: AppTheme.error)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-
+    if (_deletingProductId != null) return;
+    final l10n = context.l10n;
     final provider = context.read<AppProvider>();
-    final deleted = await provider.deleteProduct(product.id);
-    if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          deleted
-              ? context.l10n.t('product.delete.done')
-              : (provider.dataError ?? context.l10n.t('product.delete.failed')),
-          style: GoogleFonts.poppins(),
-        ),
-        backgroundColor: deleted ? AppTheme.success : AppTheme.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+    final deleted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        var deleting = false;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: Text(l10n.t('product.delete.title')),
+            content: Text(l10n.t('product.delete.body', {'name': product.name})),
+            actions: [
+              TextButton(
+                onPressed: deleting ? null : () => Navigator.pop(ctx, false),
+                child: Text(l10n.t('common.cancel')),
+              ),
+              TextButton(
+                onPressed: deleting
+                    ? null
+                    : () async {
+                        setDialogState(() => deleting = true);
+                        if (mounted) {
+                          setState(() => _deletingProductId = product.id);
+                        }
+                        final ok = await provider.deleteProduct(product.id);
+                        if (mounted) {
+                          setState(() => _deletingProductId = null);
+                        }
+                        if (!ctx.mounted) return;
+                        if (!ok) {
+                          setDialogState(() => deleting = false);
+                          AppToast.error(
+                            provider.dataError ?? l10n.t('product.delete.failed'),
+                            context: ctx,
+                          );
+                          return;
+                        }
+                        Navigator.pop(ctx, true);
+                      },
+                child: deleting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppTheme.error,
+                        ),
+                      )
+                    : Text(
+                        l10n.t('product.menu.delete'),
+                        style: const TextStyle(color: AppTheme.error),
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
+
+    if (deleted == true) {
+      AppToast.success(l10n.t('product.delete.done'));
+    }
   }
 
   // ─── Opens the "boost" page: announced, not built yet ───
@@ -1101,15 +1132,29 @@ Future<void> _confirmDeleteShop(Shop shop) async {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Neuf badge
+                  // Condition badge
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
+                      color: product.isNeuf
+                          ? const Color(0xFFE8F5E9)
+                          : const Color(0xFFFFF3E0),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text(context.l10n.t('product.tag.neuf'),
-                        style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w600, color: AppTheme.success)),
+                    child: Text(
+                      context.l10n.t(
+                        product.isNeuf
+                            ? 'product.tag.neuf'
+                            : 'product.tag.occasion',
+                      ),
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        color: product.isNeuf
+                            ? AppTheme.success
+                            : AppTheme.warning,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(product.name,
@@ -1122,33 +1167,43 @@ Future<void> _confirmDeleteShop(Shop shop) async {
               ),
             ),
             // Actions on the product: edit or delete, from the seller's own shop
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint, size: 22),
-              onSelected: (action) => _onProductMenu(action, product),
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.edit_outlined, size: 18, color: AppTheme.textPrimary),
-                      const SizedBox(width: 10),
-                      Text(context.l10n.t('product.menu.edit')),
-                    ],
-                  ),
+            if (_deletingProductId == product.id)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.error),
-                      const SizedBox(width: 10),
-                      Text(context.l10n.t('product.menu.delete'),
-                          style: const TextStyle(color: AppTheme.error)),
-                    ],
+              )
+            else
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint, size: 22),
+                onSelected: (action) => _onProductMenu(action, product),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.edit_outlined, size: 18, color: AppTheme.textPrimary),
+                        const SizedBox(width: 10),
+                        Text(context.l10n.t('product.menu.edit')),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.error),
+                        const SizedBox(width: 10),
+                        Text(context.l10n.t('product.menu.delete'),
+                            style: const TextStyle(color: AppTheme.error)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -1183,6 +1238,7 @@ class _DeleteShopDialog extends StatefulWidget {
 
 class _DeleteShopDialogState extends State<_DeleteShopDialog> {
   bool _canConfirm = false;
+  bool _deleting = false;
 
   @override
   void initState() {
@@ -1199,6 +1255,27 @@ class _DeleteShopDialogState extends State<_DeleteShopDialog> {
   void _onTyped() {
     final matches = widget.nameController.text.trim() == widget.shop.name;
     if (matches != _canConfirm) setState(() => _canConfirm = matches);
+  }
+
+  Future<void> _submitDelete() async {
+    if (!_canConfirm || _deleting) return;
+    final l10n = context.l10n;
+    final provider = context.read<AppProvider>();
+
+    setState(() => _deleting = true);
+    final deleted = await provider.deleteShop(widget.shop.id);
+    if (!mounted) return;
+
+    if (!deleted) {
+      setState(() => _deleting = false);
+      AppToast.error(
+        provider.dataError ?? l10n.t('shop.detail.danger.failed'),
+        context: context,
+      );
+      return;
+    }
+
+    Navigator.pop(context, true);
   }
 
   @override
@@ -1263,6 +1340,7 @@ class _DeleteShopDialogState extends State<_DeleteShopDialog> {
             const SizedBox(height: 6),
             TextField(
               controller: widget.nameController,
+              enabled: !_deleting,
               autocorrect: false,
               decoration: InputDecoration(
                 hintText: widget.shop.name,
@@ -1281,17 +1359,26 @@ class _DeleteShopDialogState extends State<_DeleteShopDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context, false),
+          onPressed: _deleting ? null : () => Navigator.pop(context, false),
           child: Text(l10n.t('common.cancel')),
         ),
         TextButton(
           // Disabled until the name matches, so the dialog cannot be dismissed
           // by an accidental tap on the wrong button.
-          onPressed: _canConfirm ? () => Navigator.pop(context, true) : null,
-          child: Text(
-            l10n.t('shop.detail.delete.confirm'),
-            style: const TextStyle(color: AppTheme.error),
-          ),
+          onPressed: _canConfirm && !_deleting ? _submitDelete : null,
+          child: _deleting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppTheme.error,
+                  ),
+                )
+              : Text(
+                  l10n.t('shop.detail.delete.confirm'),
+                  style: const TextStyle(color: AppTheme.error),
+                ),
         ),
       ],
     );

@@ -5,6 +5,8 @@ import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/product_model.dart';
+import '../../utils/app_toast.dart';
+import '../../utils/price_format.dart';
 import '../../widgets/product_tags.dart';
 import '../product/product_detail_screen.dart';
 
@@ -25,16 +27,24 @@ class FavoritesScreen extends StatelessWidget {
       ),
       body: Consumer<AppProvider>(
         builder: (context, provider, _) {
-          final favorites = provider.products.where((p) => p.isFavorite).toList();
+          final favorites =
+              provider.products.where((p) => p.isFavorite).toList();
           if (favorites.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            return RefreshIndicator(
+              onRefresh: provider.refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 children: [
-                  Icon(Icons.favorite_border_rounded, size: 80, color: AppTheme.textHint.withOpacity(0.3)),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                  Icon(
+                    Icons.favorite_border_rounded,
+                    size: 80,
+                    color: AppTheme.textHint.withOpacity(0.3),
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     context.l10n.t('favorites.empty.title'),
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       color: AppTheme.textSecondary,
@@ -43,6 +53,7 @@ class FavoritesScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     context.l10n.t('favorites.empty.subtitle'),
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       fontSize: 13,
                       color: AppTheme.textHint,
@@ -52,20 +63,30 @@ class FavoritesScreen extends StatelessWidget {
               ),
             );
           }
-          return ListView.separated(
-            padding: const EdgeInsets.all(20),
-            itemCount: favorites.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              return _buildFavoriteCard(context, favorites[index]);
-            },
+          return RefreshIndicator(
+            onRefresh: provider.refresh,
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(20),
+              itemCount: favorites.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return _buildFavoriteCard(context, provider, favorites[index]);
+              },
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildFavoriteCard(BuildContext context, Product product) {
+  Widget _buildFavoriteCard(
+    BuildContext context,
+    AppProvider provider,
+    Product product,
+  ) {
+    final busy = provider.isTogglingFavorite(product.id);
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -84,14 +105,20 @@ class FavoritesScreen extends StatelessWidget {
               height: 100,
               decoration: const BoxDecoration(
                 color: Color(0xFFF1F3F5),
-                borderRadius: BorderRadius.horizontal(left: Radius.circular(16)),
+                borderRadius:
+                    BorderRadius.horizontal(left: Radius.circular(16)),
               ),
               child: ClipRRect(
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+                borderRadius:
+                    const BorderRadius.horizontal(left: Radius.circular(16)),
                 child: Image.network(
                   product.images.isNotEmpty ? product.images.first : '',
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, size: 30, color: AppTheme.textHint),
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.image_outlined,
+                    size: 30,
+                    color: AppTheme.textHint,
+                  ),
                 ),
               ),
             ),
@@ -103,7 +130,9 @@ class FavoritesScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Flexible(child: ProductTags(product: product, fontSize: 11)),
+                        Flexible(
+                          child: ProductTags(product: product, fontSize: 11),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -118,7 +147,7 @@ class FavoritesScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '\$${product.price.toStringAsFixed(2)}',
+                      formatPrice(product.price),
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -130,10 +159,28 @@ class FavoritesScreen extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.favorite, color: AppTheme.error),
-              onPressed: () {
-                context.read<AppProvider>().toggleFavorite(product.id);
-              },
+              icon: busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.favorite, color: AppTheme.error),
+              onPressed: busy
+                  ? null
+                  : () async {
+                      final l10n = context.l10n;
+                      final res = await provider.toggleFavorite(product.id);
+                      if (res == null) {
+                        AppToast.error(
+                          provider.dataError ?? l10n.t('favorites.failed'),
+                        );
+                      } else if (res) {
+                        AppToast.success(l10n.t('favorites.added'));
+                      } else {
+                        AppToast.info(l10n.t('favorites.removed'));
+                      }
+                    },
             ),
           ],
         ),

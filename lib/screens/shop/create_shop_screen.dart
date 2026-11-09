@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/app_toast.dart';
 import 'shop_form.dart';
 import 'theme_preview_sheet.dart';
 
@@ -24,6 +25,7 @@ class CreateShopScreen extends StatefulWidget {
 class _CreateShopScreenState extends State<CreateShopScreen> {
   final _formKey = GlobalKey<FormState>();
   ShopFormData _data = const ShopFormData();
+  bool _submitting = false;
 
   @override
   Widget build(BuildContext context) {
@@ -49,9 +51,23 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-          child: ElevatedButton(
-            onPressed: () => _handleSubmit(context.read<AppProvider>()),
-            child: Text(context.l10n.t('form.create.cta')),
+          child: SizedBox(
+            height: 54,
+            child: ElevatedButton(
+              onPressed: _submitting
+                  ? null
+                  : () => _handleSubmit(context.read<AppProvider>()),
+              child: _submitting
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(context.l10n.t('form.create.cta')),
+            ),
           ),
         ),
       ),
@@ -87,66 +103,75 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
   }
 
   Future<void> _handleSubmit(AppProvider provider) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
+    if (_submitting) return;
+    if (!(_formKey.currentState?.validate() ?? true)) return;
 
-    // Images must exist on the server before the shop references them.
-    final logoUrl = await _upload(provider, _data.logoFile);
-    if (logoUrl == null) return;
-    final bannerUrl = await _upload(provider, _data.bannerFile);
-    if (bannerUrl == null) return;
-
-    final success = await provider.createShop(
-      name: _data.name,
-      description: _data.heroSubtitle,
-      whatsappLink: _data.whatsappLink,
-      logoUrl: logoUrl,
-      bannerUrl: bannerUrl,
-      theme: _data.themeId,
-      themeConfig: _data.themeConfig,
-      subdomain: _data.slug,
-    );
-
-    if (!success) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(provider.dataError ?? context.l10n.t('form.create.failed')),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+    final l10n = context.l10n;
+    if (_data.name.trim().isEmpty) {
+      AppToast.error(l10n.t('product.form.required'), context: context);
       return;
     }
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(context.l10n.t('form.create.success')),
-        backgroundColor: AppTheme.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-    navigator.pop();
+    final navigator = Navigator.of(context);
+    setState(() => _submitting = true);
+
+    try {
+      // Images must exist on the server before the shop references them.
+      final logoUrl = await _upload(provider, _data.logoFile, l10n);
+      if (logoUrl == null) return;
+      final bannerUrl = await _upload(provider, _data.bannerFile, l10n);
+      if (bannerUrl == null) return;
+
+      final success = await provider.createShop(
+        name: _data.name,
+        description: _data.heroSubtitle,
+        whatsappLink: _data.whatsappLink,
+        logoUrl: logoUrl,
+        bannerUrl: bannerUrl,
+        theme: _data.themeId,
+        themeConfig: _data.themeConfig,
+        subdomain: ShopFormData.slugify(
+          _data.slug.trim().isNotEmpty ? _data.slug : _data.name,
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (!success) {
+        AppToast.error(
+          provider.dataError ?? l10n.t('form.create.failed'),
+          context: context,
+        );
+        return;
+      }
+
+      navigator.pop();
+      AppToast.success(l10n.t('form.create.success'));
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
+    }
   }
 
   /// Sends one picked image and returns the URL to store, or null on failure
   /// after showing why.
-  Future<String?> _upload(AppProvider provider, File? file) async {
+  Future<String?> _upload(
+    AppProvider provider,
+    File? file,
+    AppStrings l10n,
+  ) async {
     if (file == null) return '';
 
     final url = await provider.uploadImage(file, folder: 'shops');
     if (url != null) return url;
 
-    if (!mounted) return null;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(provider.dataError ?? context.l10n.t('form.uploadFailed')),
-        backgroundColor: AppTheme.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    if (mounted) {
+      AppToast.error(
+        provider.dataError ?? l10n.t('form.uploadFailed'),
+        context: context,
+      );
+    }
     return null;
   }
 }

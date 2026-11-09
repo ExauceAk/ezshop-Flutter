@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/app_toast.dart';
 
 /// Language picker.
 ///
@@ -71,20 +72,9 @@ class LanguageScreen extends StatelessWidget {
 
         // The sheet is rebuilt by the new language, so the confirmation reads
         // in the language that was just picked.
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(
-                l10n.t('language.applied', {'language': language.nativeName}),
-                style: GoogleFonts.poppins(),
-              ),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
+        AppToast.success(
+          l10n.t('language.applied', {'language': language.nativeName}),
+        );
       },
       leading: Container(
         width: 40,

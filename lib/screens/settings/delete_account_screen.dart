@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/app_toast.dart';
 
 /// Account deletion.
 ///
@@ -35,10 +36,16 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   }
 
   Future<void> _delete() async {
+    if (_busy) return;
     final provider = context.read<AppProvider>();
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l10n;
+
+    if (_password.text.trim().isEmpty) {
+      setState(() => _error = l10n.t('auth.login.passwordRequired'));
+      AppToast.error(l10n.t('auth.login.passwordRequired'), context: context);
+      return;
+    }
 
     setState(() {
       _busy = true;
@@ -50,21 +57,16 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (!deleted) {
-      setState(() => _error = provider.dataError ?? l10n.t('delete.failed'));
+      final msg = provider.dataError ?? l10n.t('delete.failed');
+      setState(() => _error = msg);
+      AppToast.error(msg, context: context);
       return;
     }
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(l10n.t('delete.done'), style: GoogleFonts.poppins()),
-        backgroundColor: AppTheme.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
     // The session is already gone server-side: go back to the login screen
     // rather than to a profile that no longer exists.
     navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+    AppToast.success(l10n.t('delete.done'));
   }
 
   @override

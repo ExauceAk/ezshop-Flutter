@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/app_toast.dart';
 import '../settings/privacy_screen.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -37,22 +38,14 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   void _handleSignup() async {
+    if (_isLoading) return;
     if (!_formKey.currentState!.validate()) return;
+    final l10n = context.l10n;
     // The privacy policy and the account deletion are part of the terms, and
     // an app store reviewer looks for exactly this: the consent is explicit
     // and it blocks the signup, it is not a decorative checkbox.
     if (!_acceptedTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n.t('signup.termsRequired'),
-            style: GoogleFonts.poppins(),
-          ),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      AppToast.error(l10n.t('signup.termsRequired'), context: context);
       return;
     }
     setState(() => _isLoading = true);
@@ -67,16 +60,13 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = false);
     if (success && mounted) {
       Navigator.pushReplacementNamed(context, '/home');
+      AppToast.success(l10n.t('auth.signup.success'));
       return;
     }
     if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.authError ?? "Erreur d'inscription"),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+      AppToast.error(
+        provider.authError ?? "Erreur d'inscription",
+        context: context,
       );
     }
   }

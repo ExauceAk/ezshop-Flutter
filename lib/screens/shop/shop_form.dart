@@ -138,6 +138,56 @@ class ShopFormData {
       backgroundColor: '',
     );
   }
+
+  /// Converts a display name into a valid subdomain slug (lowercase ASCII with
+  /// single hyphens), matching the backend's `slugify`.
+  static String slugify(String value) {
+    const diacritics = {
+      'à': 'a',
+      'á': 'a',
+      'â': 'a',
+      'ã': 'a',
+      'ä': 'a',
+      'å': 'a',
+      'æ': 'ae',
+      'ç': 'c',
+      'è': 'e',
+      'é': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'ì': 'i',
+      'í': 'i',
+      'î': 'i',
+      'ï': 'i',
+      'ñ': 'n',
+      'ò': 'o',
+      'ó': 'o',
+      'ô': 'o',
+      'õ': 'o',
+      'ö': 'o',
+      'œ': 'oe',
+      'ù': 'u',
+      'ú': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ý': 'y',
+      'ÿ': 'y',
+    };
+    final lower = value.toLowerCase();
+    final buffer = StringBuffer();
+    for (final rune in lower.runes) {
+      final char = String.fromCharCode(rune);
+      buffer.write(diacritics[char] ?? char);
+    }
+    var slug = buffer
+        .toString()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    if (slug.length > 60) {
+      slug = slug.substring(0, 60).replaceAll(RegExp(r'-+$'), '');
+    }
+    return slug;
+  }
 }
 
 /// The shop form, shared by the creation and the edit screen.
@@ -172,6 +222,10 @@ class ShopForm extends StatefulWidget {
 class _ShopFormState extends State<ShopForm> {
   late ShopFormData _data;
 
+  /// True once the seller has already defined or manually edited the subdomain,
+  /// so subsequent changes to the shop name no longer overwrite it.
+  late bool _slugCustomised;
+
   /// Prefixes offered for the phone number.
   static const _countryCodes = ['221', '225', '223', '226', '237', '33', '1'];
 
@@ -188,6 +242,7 @@ class _ShopFormState extends State<ShopForm> {
   void initState() {
     super.initState();
     _data = widget.initial;
+    _slugCustomised = _data.slug.trim().isNotEmpty;
     _name = TextEditingController(text: _data.name);
     _whatsapp = TextEditingController(text: _data.whatsapp);
     _heroTitle = TextEditingController(text: _data.heroTitle);
@@ -348,8 +403,8 @@ class _ShopFormState extends State<ShopForm> {
                 Expanded(
                   child: TextField(
                     controller: controller,
-                    decoration: const InputDecoration(
-                      labelText: 'Code Hex (#RRGGBB)',
+                    decoration: InputDecoration(
+                      labelText: ctx.l10n.t('preview.hexCode'),
                       hintText: '#176B55',
                       isDense: true,
                     ),
@@ -786,7 +841,10 @@ class _ShopFormState extends State<ShopForm> {
           }),
           helperMaxLines: 2,
         ),
-        onChanged: (value) => _update(_data.copyWith(slug: value)),
+        onChanged: (value) {
+          _slugCustomised = true;
+          _update(_data.copyWith(slug: value));
+        },
       ),
     );
   }
@@ -813,16 +871,29 @@ class _ShopFormState extends State<ShopForm> {
           helperMaxLines: 2,
           alignLabelWithHint: lines > 1,
         ),
-        onChanged: (value) => _update(_data.copyWith(
-          name: controller == _name ? value : null,
-          slug: controller == _slug ? value : null,
-          heroTitle: controller == _heroTitle ? value : null,
-          heroSubtitle: controller == _heroSubtitle ? value : null,
-          aboutTitle: controller == _aboutTitle ? value : null,
-          aboutText: controller == _aboutText ? value : null,
-          paymentFields:
-              fieldIndex == null ? null : _replacePayment(fieldIndex, value),
-        )),
+        onChanged: (value) {
+          if (controller == _name) {
+            String? nextSlug;
+            if (!_slugCustomised) {
+              nextSlug = ShopFormData.slugify(value);
+              _slug.value = TextEditingValue(
+                text: nextSlug,
+                selection: TextSelection.collapsed(offset: nextSlug.length),
+              );
+            }
+            _update(_data.copyWith(name: value, slug: nextSlug));
+            return;
+          }
+          _update(_data.copyWith(
+            slug: controller == _slug ? value : null,
+            heroTitle: controller == _heroTitle ? value : null,
+            heroSubtitle: controller == _heroSubtitle ? value : null,
+            aboutTitle: controller == _aboutTitle ? value : null,
+            aboutText: controller == _aboutText ? value : null,
+            paymentFields:
+                fieldIndex == null ? null : _replacePayment(fieldIndex, value),
+          ));
+        },
       ),
     );
   }

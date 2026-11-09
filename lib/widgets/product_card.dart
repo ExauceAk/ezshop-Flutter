@@ -7,6 +7,7 @@ import '../models/product_model.dart';
 import '../providers/app_provider.dart';
 import '../screens/product/product_detail_screen.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_toast.dart';
 import '../utils/price_format.dart';
 
 /// The product card used everywhere products are listed.
@@ -69,30 +70,59 @@ class ProductCard extends StatelessWidget {
                   Positioned(
                     top: 8,
                     right: 8,
-                    child: GestureDetector(
-                      onTap: () =>
-                          context.read<AppProvider>().toggleFavorite(product.id),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
+                    child: Consumer<AppProvider>(
+                      builder: (context, provider, _) {
+                        final busy = provider.isTogglingFavorite(product.id);
+                        return GestureDetector(
+                          onTap: busy
+                              ? null
+                              : () async {
+                                  final l10n = context.l10n;
+                                  final res =
+                                      await provider.toggleFavorite(product.id);
+                                  if (res == null) {
+                                    AppToast.error(
+                                      provider.dataError ??
+                                          l10n.t('favorites.failed'),
+                                    );
+                                  } else if (res) {
+                                    AppToast.success(l10n.t('favorites.added'));
+                                  } else {
+                                    AppToast.info(l10n.t('favorites.removed'));
+                                  }
+                                },
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: Icon(
-                          product.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          size: 16,
-                          color:
-                              product.isFavorite ? AppTheme.error : AppTheme.textHint,
-                        ),
-                      ),
+                            child: busy
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Icon(
+                                    product.isFavorite
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    size: 16,
+                                    color: product.isFavorite
+                                        ? AppTheme.error
+                                        : AppTheme.textHint,
+                                  ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],

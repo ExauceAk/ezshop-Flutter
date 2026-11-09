@@ -9,6 +9,7 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/product_model.dart';
 import '../../models/shop_model.dart';
+import '../../utils/app_toast.dart';
 import '../../utils/price_format.dart';
 import '../../widgets/product_tags.dart';
 import '../../widgets/shop_rating_sheet.dart';
@@ -25,6 +26,7 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _currentImageIndex = 0;
   late PageController _pageController;
+  bool _orderingWhatsapp = false;
 
   @override
   void initState() {
@@ -41,11 +43,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final product = widget.product;
+    final provider = context.watch<AppProvider>();
+    final product = provider.getProductById(widget.product.id) ?? widget.product;
     // The shop is fetched with the rest of the app state, so the seller line
     // shows the shop name and its WhatsApp number instead of the raw shop id.
-    final shop = context.watch<AppProvider>().getShopById(product.shopId);
+    final shop = provider.getShopById(product.shopId);
     final images = product.images.where((url) => url.isNotEmpty).toList();
+    final togglingFav = provider.isTogglingFavorite(product.id);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -68,24 +72,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ),
             actions: [
-              Consumer<AppProvider>(
-                builder: (context, provider, _) {
-                  return GestureDetector(
-                    onTap: () => provider.toggleFavorite(product.id),
-                    child: Container(
-                      margin: const EdgeInsets.all(8),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        product.isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: product.isFavorite ? AppTheme.error : AppTheme.textPrimary,
-                      ),
-                    ),
-                  );
-                },
+              GestureDetector(
+                onTap: togglingFav
+                    ? null
+                    : () => _handleToggleFavorite(provider, product),
+                child: Container(
+                  margin: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: togglingFav
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          product.isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: product.isFavorite
+                              ? AppTheme.error
+                              : AppTheme.textPrimary,
+                        ),
+                ),
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
@@ -276,7 +288,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   // Seller info. Tapping it rates the shop: the seller card is where a buyer
                   // already is when deciding whether to trust the shop.
                   GestureDetector(
-                    onTap: shop == null ? null : () => showShopRatingSheet(context, shop!),
+                    onTap: shop == null ? null : () => showShopRatingSheet(context, shop),
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: AppTheme.cardDecoration,
@@ -325,7 +337,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton.icon(
-                      onPressed: shop != null ? () => _orderOnWhatsApp(product, shop) : null,
+                      onPressed: shop != null && !_orderingWhatsapp
+                          ? () => _orderOnWhatsApp(product, shop)
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF25D366),
                         foregroundColor: Colors.white,
@@ -336,7 +350,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                         elevation: 0,
                       ),
-                      icon: const Icon(Icons.chat_rounded, size: 22),
+                      icon: _orderingWhatsapp
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.chat_rounded, size: 22),
                       label: Text(
                         shop != null
                             ? l10n.t('product.orderWhatsapp')
@@ -417,6 +440,22 @@ Widget _buildShopLogo(Shop? shop) {
   );
 }
 
+Future<void> _handleToggleFavorite(AppProvider provider, Product product) async {
+  final l10n = context.l10n;
+  final result = await provider.toggleFavorite(product.id);
+  if (!mounted) return;
+  if (result == null) {
+    AppToast.error(
+      provider.dataError ?? l10n.t('favorites.failed'),
+      context: context,
+    );
+  } else if (result) {
+    AppToast.success(l10n.t('favorites.added'), context: context);
+  } else {
+    AppToast.info(l10n.t('favorites.removed'), context: context);
+  }
+}
+
 /// Opens WhatsApp on the shop's own number, with the product pre-filled, after
 /// recording the order so the seller sees who asked for what.
 ///
@@ -425,49 +464,52 @@ Widget _buildShopLogo(Shop? shop) {
 /// Tapping twice on the same day updates the same order instead of creating a
 /// duplicate, which the API decides.
 Future<void> _orderOnWhatsApp(Product product, Shop shop) async {
+  if (_orderingWhatsapp) return;
   final l10n = context.l10n;
   final provider = context.read<AppProvider>();
-  final messenger = ScaffoldMessenger.of(context);
 
-  final created = await provider.orderViaWhatsApp(product.id);
+  setState(() => _orderingWhatsapp = true);
 
-  final message = Uri.encodeComponent(
-    l10n.t('product.whatsappMessage', {
-      'name': product.name,
-      'price': formatPrice(product.price),
-    }),
-  );
-  final digits = shop.whatsappLink
-      .split('?')
-      .first
-      .split('/')
-      .last
-      .replaceAll(RegExp(r'[^0-9]'), '');
+  try {
+    final created = await provider.orderViaWhatsApp(product.id);
 
-  if (digits.isEmpty) {
-    _showNoWhatsApp(context);
-    return;
-  }
-
-  final url = Uri.parse('https://wa.me/$digits?text=$message');
-  final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
-
-  if (!opened) {
-    _showNoWhatsApp(context);
-    return;
-  }
-
-  if (!created) {
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          provider.dataError ?? l10n.t('product.orderAlreadyRecorded'),
-          style: GoogleFonts.poppins(fontSize: 13),
-        ),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+    final message = Uri.encodeComponent(
+      l10n.t('product.whatsappMessage', {
+        'name': product.name,
+        'price': formatPrice(product.price),
+      }),
     );
+    final digits = shop.whatsappLink
+        .split('?')
+        .first
+        .split('/')
+        .last
+        .replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (digits.isEmpty) {
+      if (mounted) _showNoWhatsApp(context);
+      return;
+    }
+
+    final url = Uri.parse('https://wa.me/$digits?text=$message');
+    final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+
+    if (!opened) {
+      if (mounted) _showNoWhatsApp(context);
+      return;
+    }
+
+    if (created) {
+      AppToast.success(l10n.t('product.orderRecorded'));
+    } else if (provider.dataError != null) {
+      AppToast.error(provider.dataError!);
+    } else {
+      AppToast.info(l10n.t('product.orderAlreadyRecorded'));
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _orderingWhatsapp = false);
+    }
   }
 }
 
@@ -504,14 +546,7 @@ Widget _buildRatingLine(BuildContext context, Shop shop) {
 }
 
 void _showNoWhatsApp(BuildContext context) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        context.l10n.t('product.noWhatsapp'),
-        style: GoogleFonts.poppins(fontSize: 13),
-      ),
-    ),
-  );
+  AppToast.error(context.l10n.t('product.noWhatsapp'), context: context);
 }
 }
 

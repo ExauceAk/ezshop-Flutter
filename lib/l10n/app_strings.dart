@@ -122,6 +122,9 @@ class AppStrings {
     'favorites.title': 'Mes Favoris',
     'favorites.empty.title': 'Aucun favori pour le moment',
     'favorites.empty.subtitle': 'Appuyez sur ♡ pour ajouter un produit',
+    'favorites.added': 'Ajouté aux favoris',
+    'favorites.removed': 'Retiré des favoris',
+    'favorites.failed': 'Impossible de modifier les favoris',
 
     // ─── Profile ───
     'profile.title': 'Mon Profil',
@@ -166,6 +169,7 @@ class AppStrings {
     'product.noWhatsapp':
         'WhatsApp indisponible : cette boutique n\'a pas renseigné de numéro.',
     'product.orderAlreadyRecorded': 'Commande déjà enregistrée pour aujourd\'hui',
+    'product.orderRecorded': 'Commande enregistrée ! Ouverture de WhatsApp…',
     'product.orderFailed': 'Commande non enregistrée',
     'product.whatsappMessage':
         'Bonjour, je suis intéressé par votre produit « {name} » à {price}, trouvé sur EZ Shop.',
@@ -186,6 +190,7 @@ class AppStrings {
     // ─── Shops ───
     'shop.list.title': 'Mes boutiques',
     'shop.list.new': 'Nouvelle boutique',
+    'shop.detail.edit': 'Modifier',
     'shop.detail.personalise': 'Personnaliser la boutique',
     'shop.detail.stats.products': 'Produits',
     'shop.detail.stats.orders': 'Commandes',
@@ -301,6 +306,8 @@ class AppStrings {
     'notifications.empty': 'Aucune notification pour le moment',
     'notifications.markAllRead': 'Tout marquer comme lu',
     'notifications.unreadBadge': '{count} non lue(s)',
+    'notifications.allRead': 'Toutes les notifications ont été marquées comme lues',
+    'notifications.failed': 'Impossible de mettre à jour les notifications',
 
     // ─── Language ───
     'language.title': 'Langue',
@@ -394,6 +401,9 @@ class AppStrings {
     'auth.signup.confirmRequired': 'Confirmation requise',
     'auth.signup.mismatch': 'Les mots de passe ne correspondent pas',
     'auth.forgot.success': 'E-mail envoyé !',
+    'auth.login.success': 'Connexion réussie !',
+    'auth.signup.success': 'Compte créé avec succès !',
+    'auth.logout.success': 'Vous êtes déconnecté',
 
     // ─── Shop list ───
     'shop.list.empty': 'Aucune boutique',
@@ -431,6 +441,9 @@ class AppStrings {
     'preview.colorPrimary': 'Principale',
     'preview.colorAccent': 'Accent',
     'preview.colorBackground': 'Fond',
+    'preview.hexCode': 'Code Hex (#RRGGBB)',
+    'preview.prevTheme': 'Thème précédent',
+    'preview.nextTheme': 'Thème suivant',
     'form.colors.section': 'Couleurs de votre marque',
     'form.colors.subtitle':
         'Personnalisez la palette du thème choisi ou conservez ses couleurs d’origine.',
@@ -505,6 +518,9 @@ class AppStrings {
     'favorites.title': 'My favorites',
     'favorites.empty.title': 'No favorites yet',
     'favorites.empty.subtitle': 'Tap ♡ to save a product',
+    'favorites.added': 'Added to favorites',
+    'favorites.removed': 'Removed from favorites',
+    'favorites.failed': 'Could not update favorites',
 
     // ─── Profile ───
     'profile.title': 'My profile',
@@ -549,6 +565,7 @@ class AppStrings {
     'product.noWhatsapp':
         'WhatsApp unavailable: this shop has not set a phone number.',
     'product.orderAlreadyRecorded': 'Already ordered today',
+    'product.orderRecorded': 'Order recorded! Opening WhatsApp…',
     'product.orderFailed': 'Order not recorded',
     'product.whatsappMessage':
         'Hello, I am interested in your product “{name}” at {price}, found on EZ Shop.',
@@ -569,6 +586,7 @@ class AppStrings {
     // ─── Shops ───
     'shop.list.title': 'My shops',
     'shop.list.new': 'New shop',
+    'shop.detail.edit': 'Edit',
     'shop.detail.personalise': 'Customise the shop',
     'shop.detail.stats.products': 'Products',
     'shop.detail.stats.orders': 'Orders',
@@ -683,6 +701,8 @@ class AppStrings {
     'notifications.empty': 'No notifications yet',
     'notifications.markAllRead': 'Mark all as read',
     'notifications.unreadBadge': '{count} unread',
+    'notifications.allRead': 'All notifications marked as read',
+    'notifications.failed': 'Could not update notifications',
 
     // ─── Language ───
     'language.title': 'Language',
@@ -776,6 +796,9 @@ class AppStrings {
     'auth.signup.confirmRequired': 'Confirmation is required',
     'auth.signup.mismatch': 'Passwords do not match',
     'auth.forgot.success': 'Email sent!',
+    'auth.login.success': 'Signed in successfully!',
+    'auth.signup.success': 'Account created successfully!',
+    'auth.logout.success': 'You have been signed out',
 
     // ─── Shop list ───
     'shop.list.empty': 'No shop yet',
@@ -813,6 +836,9 @@ class AppStrings {
     'preview.colorPrimary': 'Primary',
     'preview.colorAccent': 'Accent',
     'preview.colorBackground': 'Background',
+    'preview.hexCode': 'Hex code (#RRGGBB)',
+    'preview.prevTheme': 'Previous theme',
+    'preview.nextTheme': 'Next theme',
     'form.colors.section': 'Brand colours',
     'form.colors.subtitle':
         'Customise the chosen theme palette or keep its native colours.',

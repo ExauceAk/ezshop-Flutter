@@ -7,6 +7,7 @@ import '../../l10n/app_strings.dart';
 import '../../models/product_model.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/app_toast.dart';
 
 /// Product creation and edition, in one screen.
 ///
@@ -35,6 +36,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   late String _selectedCategoryId;
   List<File> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
+  bool _submitting = false;
 
   bool get _isEditing => widget.existing != null;
 
@@ -350,7 +352,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _submit,
+                  onPressed: _submitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
@@ -359,15 +361,24 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: Text(
-                    context.l10n.t(
-                      _isEditing ? 'common.save' : 'product.form.publish',
-                    ),
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  child: _submitting
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          context.l10n.t(
+                            _isEditing ? 'common.save' : 'product.form.publish',
+                          ),
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -454,23 +465,32 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  void _submit() async {
-    if (_formKey.currentState!.validate()) {
-      // Creating requires a photo; editing keeps the stored one when the
-      // seller does not pick a new one.
-      if (_selectedImages.isEmpty && !_isEditing) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.t('product.form.needPhoto'),
-              style: GoogleFonts.poppins()),
-            backgroundColor: AppTheme.error,
-          ),
-        );
-        return;
-      }
+  Future<void> _submit() async {
+    if (_submitting) return;
+    if (!_formKey.currentState!.validate()) return;
 
-      final provider = context.read<AppProvider>();
+    final l10n = context.l10n;
+    // Creating requires a photo; editing keeps the stored one when the
+    // seller does not pick a new one.
+    if (_selectedImages.isEmpty && !_isEditing) {
+      AppToast.error(l10n.t('product.form.needPhoto'), context: context);
+      return;
+    }
 
+    final parsedPrice = double.tryParse(
+      _priceController.text.trim().replaceAll(',', '.'),
+    );
+    if (parsedPrice == null || parsedPrice < 0) {
+      AppToast.error(l10n.t('product.form.required'), context: context);
+      return;
+    }
+
+    final provider = context.read<AppProvider>();
+    final navigator = Navigator.of(context);
+
+    setState(() => _submitting = true);
+
+    try {
       // Photos live on the phone until they are uploaded, and only the
       // returned URLs can be stored on the product. Every picked photo is
       // sent: the seller chose a gallery, and dropping all but the first is
@@ -481,14 +501,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (!mounted) return;
 
       if (_selectedImages.isNotEmpty && galleryUrls.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              provider.dataError ?? context.l10n.t('product.form.uploadFailed'),
-              style: GoogleFonts.poppins(),
-            ),
-            backgroundColor: AppTheme.error,
-          ),
+        AppToast.error(
+          provider.dataError ?? l10n.t('product.form.uploadFailed'),
+          context: context,
         );
         return;
       }
@@ -502,18 +517,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
               widget.existing!.id,
               name: _nameController.text,
               description: _descController.text,
-              price: double.parse(_priceController.text),
+              price: parsedPrice,
               isNeuf: _isNeuf,
               isNegotiable: _isNegotiable,
-              imageUrl: coverUrl,
-              imageUrls: galleryUrls,
+              imageUrl: coverUrl.isEmpty ? null : coverUrl,
+              imageUrls: galleryUrls.isEmpty ? null : galleryUrls,
               categoryId: _selectedCategoryId,
             )
           : await provider.addProduct(
               shopId: widget.shopId,
               name: _nameController.text,
               description: _descController.text,
-              price: double.parse(_priceController.text),
+              price: parsedPrice,
               isNeuf: _isNeuf,
               isNegotiable: _isNegotiable,
               imageUrl: coverUrl,
@@ -523,30 +538,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (!mounted) return;
 
       if (!success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              provider.dataError ?? context.l10n.t('product.form.publishFailed'),
-              style: GoogleFonts.poppins(),
-            ),
-            backgroundColor: AppTheme.error,
-          ),
+        AppToast.error(
+          provider.dataError ?? l10n.t('product.form.publishFailed'),
+          context: context,
         );
         return;
       }
 
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n.t(
-              _isEditing ? 'product.form.updated' : 'product.form.published',
-            ),
-            style: GoogleFonts.poppins(),
-          ),
-          backgroundColor: AppTheme.success,
-        ),
+      final successMsg = l10n.t(
+        _isEditing ? 'product.form.updated' : 'product.form.published',
       );
+      navigator.pop();
+      AppToast.success(successMsg);
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
     }
   }
 }

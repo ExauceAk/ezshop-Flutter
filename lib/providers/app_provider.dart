@@ -376,12 +376,61 @@ class AppProvider extends ChangeNotifier {
         address: address,
         avatarUrl: avatarUrl,
       );
+      _dataError = null;
       notifyListeners();
+      // Invalidate user profile and shops so any author display name stays fresh.
+      await _invalidateUserAndShops();
       return true;
     } on ApiException catch (e) {
-      _dataError = e.message;
+      _dataError = e.errors?.values.firstOrNull ?? e.message;
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Refreshes the signed-in user and shop list in the background after a
+  /// profile or shop mutation, without wiping the current screen on error.
+  Future<void> _invalidateUserAndShops() async {
+    try {
+      if (_client.hasSession) {
+        _currentUser = await _api.me();
+      }
+      _shops = await _api.shops();
+      notifyListeners();
+    } on ApiException {
+      // Keep optimistic state if the background refetch fails.
+    }
+  }
+
+  /// Invalidates and refetches shops, products, favorites and optional shop
+  /// stats/orders so every screen reflects the latest server state after a
+  /// mutation.
+  Future<void> invalidateAfterMutation({String? shopId}) async {
+    try {
+      await Future.wait([
+        () async {
+          try {
+            _shops = await _api.shops();
+          } on ApiException {
+            // Keep optimistic shop list.
+          }
+        }(),
+        () async {
+          try {
+            _products = await _api.products();
+            await _applyFavorites();
+          } on ApiException {
+            // Keep optimistic product list.
+          }
+        }(),
+        if (shopId != null && shopId.isNotEmpty) ...[
+          loadShopStats(shopId),
+          loadShopOrders(shopId),
+        ],
+      ]);
+      notifyListeners();
+    } catch (_) {
+      // Never fail the caller after the mutation itself succeeded.
     }
   }
 
@@ -429,6 +478,13 @@ class AppProvider extends ChangeNotifier {
     return _products.where((p) => p.shopId == shopId).toList();
   }
 
+  Product? getProductById(String productId) {
+    for (final product in _products) {
+      if (product.id == productId) return product;
+    }
+    return null;
+  }
+
   Shop? getShopById(String shopId) {
     for (final shop in _shops) {
       if (shop.id == shopId) return shop;
@@ -445,17 +501,27 @@ class AppProvider extends ChangeNotifier {
   // FAVORITES
   // ═══════════════════════════════════
 
+  final Set<String> _togglingFavorites = {};
+
+  /// True while a favorite request is in flight for [productId].
+  bool isTogglingFavorite(String productId) =>
+      _togglingFavorites.contains(productId);
+
   /// Flips the favorite flag of a product and persists it.
   ///
-  /// The local flag flips first so the star reacts instantly; a failure rolls
-  /// it back.
-  Future<void> toggleFavorite(String productId) async {
+  /// @returns `true` when added to favorites, `false` when removed, or `null`
+  /// when the API call failed (and rolled back).
+  Future<bool?> toggleFavorite(String productId) async {
+    if (_togglingFavorites.contains(productId)) return null;
+
     final index = _products.indexWhere((p) => p.id == productId);
-    if (index == -1) return;
+    if (index == -1) return null;
 
     final product = _products[index];
     final wasFavorite = product.isFavorite;
-    product.isFavorite = !wasFavorite;
+    final nextState = !wasFavorite;
+    product.isFavorite = nextState;
+    _togglingFavorites.add(productId);
     notifyListeners();
 
     try {
@@ -464,10 +530,17 @@ class AppProvider extends ChangeNotifier {
       } else {
         await _api.addFavorite(productId);
       }
+      await _applyFavorites();
+      _dataError = null;
+      _togglingFavorites.remove(productId);
+      notifyListeners();
+      return nextState;
     } on ApiException catch (e) {
       product.isFavorite = wasFavorite;
       _dataError = e.message;
+      _togglingFavorites.remove(productId);
       notifyListeners();
+      return null;
     }
   }
 
@@ -480,10 +553,10 @@ class AppProvider extends ChangeNotifier {
   // ═══════════════════════════════════
 
   /// Loads the notifications published by the admin.
-///
-/// Read-only in the app: the messages are written from the API's Swagger UI,
-/// so there is nothing to create here, only to display and mark as read.
-Future<void> loadNotifications() async {
+  ///
+  /// Read-only in the app: the messages are written from the API's Swagger UI,
+  /// so there is nothing to create here, only to display and mark as read.
+  Future<void> loadNotifications() async {
     try {
       _notifications = await _api.notifications();
       notifyListeners();
@@ -494,9 +567,9 @@ Future<void> loadNotifications() async {
   }
 
   /// Marks one notification as read, in the API and in the local list.
-  Future<void> markNotificationRead(String id) async {
+  Future<bool> markNotificationRead(String id) async {
     final index = _notifications.indexWhere((item) => item.id == id);
-    if (index == -1 || _notifications[index].isRead) return;
+    if (index == -1 || _notifications[index].isRead) return true;
 
     final previous = _notifications[index];
     _notifications[index] = previous.copyWith(isRead: true);
@@ -504,16 +577,20 @@ Future<void> loadNotifications() async {
 
     try {
       await _api.markNotificationRead(id);
-    } on ApiException {
+      await loadNotifications();
+      return true;
+    } on ApiException catch (e) {
       // Rolled back so the dot comes back rather than lying about the state.
       _notifications[index] = previous;
+      _dataError = e.message;
       notifyListeners();
+      return false;
     }
   }
 
   /// Marks every notification as read.
-  Future<void> markAllNotificationsRead() async {
-    if (unreadNotifications == 0) return;
+  Future<bool> markAllNotificationsRead() async {
+    if (unreadNotifications == 0) return true;
 
     final previous = _notifications;
     _notifications = [
@@ -523,9 +600,14 @@ Future<void> loadNotifications() async {
 
     try {
       await _api.markAllNotificationsRead();
-    } on ApiException {
+      await loadNotifications();
+      _dataError = null;
+      return true;
+    } on ApiException catch (e) {
       _notifications = previous;
+      _dataError = e.message;
       notifyListeners();
+      return false;
     }
   }
 
@@ -593,6 +675,8 @@ Future<void> loadNotifications() async {
 
       _dataError = null;
       notifyListeners();
+      // Invalidate shop stats and shop list from the server.
+      await invalidateAfterMutation(shopId: shopId);
       return true;
     } on ApiException catch (e) {
       _dataError = e.errors?.values.firstOrNull ?? e.message;
@@ -608,11 +692,16 @@ Future<void> loadNotifications() async {
   Future<bool> orderViaWhatsApp(String productId) async {
     try {
       final result = await _api.orderViaWhatsApp(productId);
+      final product = getProductById(productId);
 
       // Refresh both lists: the buyer sees it in "Mes Commandes", the seller
       // in the orders of their shop.
       _orders = await _api.orders();
       _receivedOrders = await _api.receivedOrders();
+      if (product != null && product.shopId.isNotEmpty) {
+        await loadShopStats(product.shopId);
+        await loadShopOrders(product.shopId);
+      }
 
       _dataError = null;
       notifyListeners();
@@ -681,6 +770,7 @@ Future<void> loadNotifications() async {
 
       _dataError = null;
       notifyListeners();
+      await invalidateAfterMutation(shopId: shop.id);
       return true;
     } on ApiException catch (e) {
       _dataError = e.errors?.values.firstOrNull ?? e.message;
@@ -724,6 +814,8 @@ Future<void> loadNotifications() async {
 
       _dataError = null;
       notifyListeners();
+      // Invalidate cached shop list, products and stats after editing shop info.
+      await invalidateAfterMutation(shopId: shopId);
       return true;
     } on ApiException catch (e) {
       _dataError = e.errors?.values.firstOrNull ?? e.message;
@@ -777,6 +869,7 @@ Future<void> loadNotifications() async {
 
       _dataError = null;
       notifyListeners();
+      await invalidateAfterMutation(shopId: targetShopId);
       return true;
     } on ApiException catch (e) {
       _dataError = e.errors?.values.firstOrNull ?? e.message;
@@ -815,8 +908,8 @@ Future<void> loadNotifications() async {
 
       // The response only carries the edited fields, so the stored favorite
       // flag is re-applied on top of it.
-      final wasFavorite =
-          _products.firstWhere((p) => p.id == productId).isFavorite;
+      final existing = getProductById(productId);
+      final wasFavorite = existing?.isFavorite ?? false;
 
       final index = _products.indexWhere((p) => p.id == productId);
       if (index != -1) {
@@ -825,6 +918,7 @@ Future<void> loadNotifications() async {
 
       _dataError = null;
       notifyListeners();
+      await invalidateAfterMutation(shopId: updated.shopId);
       return true;
     } on ApiException catch (e) {
       _dataError = e.errors?.values.firstOrNull ?? e.message;
@@ -859,6 +953,7 @@ Future<void> loadNotifications() async {
       }
       _dataError = null;
       notifyListeners();
+      await invalidateAfterMutation(shopId: removed?.shopId);
       return true;
     } on ApiException catch (e) {
       if (removed != null) {
@@ -892,7 +987,7 @@ Future<void> loadNotifications() async {
     }
   }
 
-/// What deleting [shopId] would remove: products, orders and ratings.
+  /// What deleting [shopId] would remove: products, orders and ratings.
   ///
   /// Returned so the caller can warn with real numbers instead of a generic
   /// "are you sure?".
@@ -912,10 +1007,16 @@ Future<void> loadNotifications() async {
       await _api.deleteShop(shopId);
       _shops = _shops.where((s) => s.id != shopId).toList();
       _products = _products.where((p) => p.shopId != shopId).toList();
-      _orders =
-          _orders.where((o) => o.shopId != shopId).toList();
+      _orders = _orders.where((o) => o.shopId != shopId).toList();
+      _receivedOrders =
+          _receivedOrders.where((o) => o.shopId != shopId).toList();
+      _shopOrders.remove(shopId);
+      _shopStats.remove(shopId);
+      _myShopRatings.remove(shopId);
       _dataError = null;
       notifyListeners();
+      await invalidateAfterMutation();
+      await _invalidateUserAndShops();
       return true;
     } on ApiException catch (e) {
       _dataError = e.errors?.values.firstOrNull ?? e.message;

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/app_toast.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,7 +28,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() async {
+    if (_isLoading) return;
     if (!_formKey.currentState!.validate()) return;
+    final l10n = context.l10n;
     setState(() => _isLoading = true);
     final provider = context.read<AppProvider>();
     final success = await provider.login(
@@ -38,16 +41,13 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
     if (success && mounted) {
       Navigator.pushReplacementNamed(context, '/home');
+      AppToast.success(l10n.t('auth.login.success'));
       return;
     }
     if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.authError ?? context.l10n.t('auth.login.error')),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+      AppToast.error(
+        provider.authError ?? l10n.t('auth.login.error'),
+        context: context,
       );
     }
   }

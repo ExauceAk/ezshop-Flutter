@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/app_toast.dart';
 import '../../utils/image_pick.dart';
 import '../../utils/price_format.dart';
 import '../common/coming_soon_screen.dart';
@@ -25,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// True while a picked avatar is being uploaded, so the badge can show a
   /// spinner instead of pretending the tap did nothing.
   bool _savingAvatar = false;
+  bool _loggingOut = false;
 
   @override
   Widget build(BuildContext context) {
@@ -177,19 +179,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     setState(() => _savingAvatar = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          saved
-              ? context.l10n.t('profile.avatar.updated')
-              : (provider.dataError ?? context.l10n.t('profile.avatar.failed')),
-          style: GoogleFonts.poppins(),
-        ),
-        backgroundColor: saved ? AppTheme.success : AppTheme.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    if (saved) {
+      AppToast.success(context.l10n.t('profile.avatar.updated'), context: context);
+    } else {
+      AppToast.error(
+        provider.dataError ?? context.l10n.t('profile.avatar.failed'),
+        context: context,
+      );
+    }
   }
 
   Widget _buildSettingsList(AppProvider provider) {
@@ -300,14 +297,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () async {
-                // The session is cleared server-side by dropping the tokens, so
-                // wait for storage to be wiped before leaving the screen.
-                await provider.logout();
-                if (!context.mounted) return;
-                Navigator.pushReplacementNamed(context, '/login');
-              },
-              icon: const Icon(Icons.logout_rounded, color: AppTheme.error),
+              onPressed: _loggingOut
+                  ? null
+                  : () async {
+                      final l10n = context.l10n;
+                      setState(() => _loggingOut = true);
+                      // The session is cleared server-side by dropping the tokens, so
+                      // wait for storage to be wiped before leaving the screen.
+                      await provider.logout();
+                      if (!mounted) return;
+                      setState(() => _loggingOut = false);
+                      Navigator.pushReplacementNamed(context, '/login');
+                      AppToast.info(l10n.t('auth.logout.success'));
+                    },
+              icon: _loggingOut
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.error,
+                      ),
+                    )
+                  : const Icon(Icons.logout_rounded, color: AppTheme.error),
               label: Text(
                 context.l10n.t('profile.logout'),
                 style: GoogleFonts.poppins(
@@ -372,91 +384,110 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.75,
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppTheme.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+      builder: (ctx) {
+        var saving = false;
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Container(
+            height: MediaQuery.of(ctx).size.height * 0.75,
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            const SizedBox(height: 20),
-            Text(context.l10n.t('profile.edit.title'),
-                style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 24),
-            Text(context.l10n.t('profile.edit.name'),
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: nameController,
-              decoration:
-                  InputDecoration(hintText: context.l10n.t('profile.edit.nameHint')),
-            ),
-            const SizedBox(height: 16),
-            Text(context.l10n.t('profile.edit.phone'),
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              decoration:
-                  InputDecoration(hintText: context.l10n.t('profile.edit.phoneHint')),
-            ),
-            const SizedBox(height: 16),
-            Text(context.l10n.t('profile.edit.address'),
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: addressController,
-              decoration:
-                  InputDecoration(hintText: context.l10n.t('profile.edit.addressHint')),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: () async {
-                  final saved = await provider.updateProfile(
-                    name: nameController.text,
-                    phone: phoneController.text,
-                    address: addressController.text,
-                  );
-                  if (!ctx.mounted) return;
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        saved
-                            ? ctx.l10n.t('profile.edit.saved')
-                            : (provider.dataError ?? ctx.l10n.t('profile.edit.failed')),
-                      ),
-                      backgroundColor: saved ? AppTheme.success : AppTheme.error,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.border,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                  );
-                },
-                child: Text(context.l10n.t('common.save')),
-              ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(context.l10n.t('profile.edit.title'),
+                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 24),
+                Text(context.l10n.t('profile.edit.name'),
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: nameController,
+                  enabled: !saving,
+                  decoration: InputDecoration(
+                    hintText: context.l10n.t('profile.edit.nameHint'),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(context.l10n.t('profile.edit.phone'),
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: phoneController,
+                  enabled: !saving,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    hintText: context.l10n.t('profile.edit.phoneHint'),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(context.l10n.t('profile.edit.address'),
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: addressController,
+                  enabled: !saving,
+                  decoration: InputDecoration(
+                    hintText: context.l10n.t('profile.edit.addressHint'),
+                  ),
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            final l10n = ctx.l10n;
+                            setSheetState(() => saving = true);
+                            final saved = await provider.updateProfile(
+                              name: nameController.text,
+                              phone: phoneController.text,
+                              address: addressController.text,
+                            );
+                            if (!ctx.mounted) return;
+                            setSheetState(() => saving = false);
+                            if (!saved) {
+                              AppToast.error(
+                                provider.dataError ?? l10n.t('profile.edit.failed'),
+                                context: ctx,
+                              );
+                              return;
+                            }
+                            Navigator.pop(ctx);
+                            AppToast.success(l10n.t('profile.edit.saved'));
+                          },
+                    child: saving
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(context.l10n.t('common.save')),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -466,48 +497,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// placed themselves, so this lists [AppProvider.receivedOrders]: all the
   /// shops combined, newest first.
   void _showOrdersDialog(BuildContext context, AppProvider provider) {
+    provider.loadOrders();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.7,
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
+      builder: (ctx) => Consumer<AppProvider>(
+        builder: (ctx, liveProvider, _) => Container(
+          height: MediaQuery.of(ctx).size.height * 0.7,
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(ctx.l10n.t('profile.orders.title'),
-                style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 20),
-            Expanded(
-              child: provider.orders.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.shopping_bag_outlined, size: 60, color: AppTheme.textHint),
-                          const SizedBox(height: 12),
-                          Text(ctx.l10n.t('profile.orders.empty'),
-                              style: GoogleFonts.poppins(color: AppTheme.textSecondary)),
-                        ],
-                      ),
-                    )
-                  : ListView.separated(
-                      itemCount: provider.receivedOrders.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final order = provider.receivedOrders[index];
+              const SizedBox(height: 20),
+              Text(ctx.l10n.t('profile.orders.title'),
+                  style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 20),
+              Expanded(
+                child: liveProvider.receivedOrders.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.shopping_bag_outlined, size: 60, color: AppTheme.textHint),
+                            const SizedBox(height: 12),
+                            Text(ctx.l10n.t('profile.orders.empty'),
+                                style: GoogleFonts.poppins(color: AppTheme.textSecondary)),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: liveProvider.receivedOrders.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final order = liveProvider.receivedOrders[index];
                         return Container(
                           padding: const EdgeInsets.all(16),
                           decoration: AppTheme.cardDecoration,
@@ -571,8 +604,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         );
                       },
                     ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

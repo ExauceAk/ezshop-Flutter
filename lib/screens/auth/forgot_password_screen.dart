@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/app_toast.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -15,6 +16,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
   bool _sent = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -22,20 +24,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  void _handleReset() async {
+  Future<void> _handleReset() async {
+    if (_isLoading) return;
+    final l10n = context.l10n;
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      AppToast.error(l10n.t('auth.login.emailRequired'), context: context);
+      return;
+    }
+
+    setState(() => _isLoading = true);
     final provider = context.read<AppProvider>();
-    final success = await provider.forgotPassword(_emailController.text);
+    final success = await provider.forgotPassword(email);
     if (!mounted) return;
+    setState(() => _isLoading = false);
     if (success) {
       setState(() => _sent = true);
+      AppToast.success(l10n.t('auth.forgot.sent'), context: context);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.authError ?? 'Email invalide'),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+      AppToast.error(
+        provider.authError ?? 'Email invalide',
+        context: context,
       );
     }
   }
@@ -97,8 +106,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           width: double.infinity,
           height: 56,
           child: ElevatedButton(
-            onPressed: _handleReset,
-            child: const Text('Envoyer le lien'),
+            onPressed: _isLoading ? null : _handleReset,
+            child: _isLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : const Text('Envoyer le lien'),
           ),
         ),
       ],

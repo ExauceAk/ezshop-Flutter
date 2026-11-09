@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'l10n/app_strings.dart';
 import 'providers/app_provider.dart';
 import 'theme/app_theme.dart';
+import 'utils/app_toast.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
@@ -36,6 +37,7 @@ class MyApp extends StatelessWidget {
           child: MaterialApp(
             title: 'EZ Shop',
             debugShowCheckedModeBanner: false,
+            scaffoldMessengerKey: rootScaffoldMessengerKey,
             theme: AppTheme.lightTheme,
             home: const _RootRouter(),
             routes: {

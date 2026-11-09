@@ -178,18 +178,22 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           );
         }
-        return GridView.builder(
-          padding: const EdgeInsets.all(20),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.64,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+        return RefreshIndicator(
+          onRefresh: provider.refresh,
+          child: GridView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.64,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: results.length,
+            itemBuilder: (context, index) {
+              return ProductCard(product: results[index]);
+            },
           ),
-          itemCount: results.length,
-          itemBuilder: (context, index) {
-            return ProductCard(product: results[index]);
-          },
         );
       },
     );

@@ -246,8 +246,8 @@ class _ThemePreviewSheetState extends State<_ThemePreviewSheet> {
                 Expanded(
                   child: TextField(
                     controller: controller,
-                    decoration: const InputDecoration(
-                      labelText: 'Code Hex (#RRGGBB)',
+                    decoration: InputDecoration(
+                      labelText: ctx.l10n.t('preview.hexCode'),
                       hintText: '#176B55',
                       isDense: true,
                     ),
@@ -302,7 +302,7 @@ class _ThemePreviewSheetState extends State<_ThemePreviewSheet> {
             child: Row(
               children: [
                 IconButton(
-                  tooltip: 'Thème précédent',
+                  tooltip: l10n.t('preview.prevTheme'),
                   visualDensity: VisualDensity.compact,
                   onPressed: () => _switchTheme(-1),
                   icon: const Icon(Icons.chevron_left_rounded, size: 22),
@@ -356,7 +356,7 @@ class _ThemePreviewSheetState extends State<_ThemePreviewSheet> {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Thème suivant',
+                  tooltip: l10n.t('preview.nextTheme'),
                   visualDensity: VisualDensity.compact,
                   onPressed: () => _switchTheme(1),
                   icon: const Icon(Icons.chevron_right_rounded, size: 22),

@@ -6,6 +6,7 @@ import '../../l10n/app_strings.dart';
 import '../../models/notification_model.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/app_toast.dart';
 
 /// Notification centre.
 ///
@@ -20,6 +21,8 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  bool _markingAll = false;
+
   @override
   void initState() {
     super.initState();
@@ -28,6 +31,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<AppProvider>().loadNotifications();
     });
+  }
+
+  Future<void> _handleMarkAll(AppProvider provider) async {
+    if (_markingAll) return;
+    final l10n = context.l10n;
+    setState(() => _markingAll = true);
+    final ok = await provider.markAllNotificationsRead();
+    if (!mounted) return;
+    setState(() => _markingAll = false);
+    if (ok) {
+      AppToast.success(l10n.t('notifications.allRead'), context: context);
+    } else {
+      AppToast.error(
+        provider.dataError ?? l10n.t('notifications.failed'),
+        context: context,
+      );
+    }
   }
 
   @override
@@ -44,15 +64,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         actions: [
           if (provider.unreadNotifications > 0)
             TextButton(
-              onPressed: provider.markAllNotificationsRead,
-              child: Text(
-                l10n.t('notifications.markAllRead'),
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              onPressed: _markingAll ? null : () => _handleMarkAll(provider),
+              child: _markingAll
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(
+                      l10n.t('notifications.markAllRead'),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: AppTheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             ),
         ],
       ),
