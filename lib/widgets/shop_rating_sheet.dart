@@ -85,19 +85,18 @@ class _ShopRatingSheetState extends State<_ShopRatingSheet> {
 
     setState(() => _saving = false);
 
-    if (!saved) {
-      AppToast.error(
-        provider.dataError ?? l10n.t('rating.failed'),
-        context: context,
-      );
-      return;
-    }
-
+    final errorMessage = provider.dataError ?? l10n.t('rating.failed');
     final successMessage = _initialRating == 0
         ? l10n.t('rating.thanks')
         : l10n.t('rating.updated');
 
     Navigator.pop(context);
+
+    if (!saved) {
+      AppToast.error(errorMessage);
+      return;
+    }
+
     AppToast.success(successMessage);
   }
 

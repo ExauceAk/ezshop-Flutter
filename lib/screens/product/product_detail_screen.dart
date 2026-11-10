@@ -250,22 +250,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                         ),
                       ),
-                      if (product.discountPercent > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppTheme.error,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '-${product.discountPercent.round()}%',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -280,17 +264,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           color: AppTheme.primary,
                         ),
                       ),
-                      if (product.oldPrice != null) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          formatPrice(product.oldPrice!),
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            color: AppTheme.textHint,
-                            decoration: TextDecoration.lineThrough,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 12),

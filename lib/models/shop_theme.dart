@@ -159,7 +159,6 @@ const Map<String, String> optionalSectionLabels = {
   'trust-badges': 'Garanties e-commerce',
   'category-showcase': 'Univers & Catégories',
   'featured-spotlight': 'Produit Vedette',
-  'promo-banner': 'Bannière Promo',
   'lookbook': 'Lookbook Interactif',
   'craftsmanship': 'Parcours en 3 étapes',
   'testimonials': 'Avis Clients',
@@ -769,7 +768,7 @@ const List<ShopTheme> storefrontThemes = [
     category: 'Tech & Urbain',
     signature:
         'Terminal HUD [SYS.ONLINE] + Télémétrie live + Cartes biseautées Cyber',
-    sections: ['marquee', 'promo-banner'],
+    sections: ['marquee'],
     demoShopName: 'CyberPulse Lab',
     demoEyebrow: 'Hardware & Équipement Haute Précision',
     demoTitle: 'Performance pure et ingénierie de pointe',
@@ -1161,11 +1160,11 @@ const List<ShopTheme> storefrontThemes = [
     id: 'super-marche',
     name: 'Super-Marché',
     description:
-        'Drive local & épicerie express : barre latérale de rayons, recherche rapide et cartes rayon avec badge de remise immédiate',
+        'Drive local & épicerie express : barre latérale de rayons, recherche rapide et cartes rayon claires',
     category: 'Grossiste & B2B',
     signature:
-        'Sidebar latérale fixe + Rayons par catégorie + Cartes Drive à remise %',
-    sections: ['promo-banner', 'trust-badges'],
+        'Sidebar latérale fixe + Rayons par catégorie + Cartes Drive',
+    sections: ['trust-badges'],
     demoShopName: 'Marché Frais Express',
     demoEyebrow: 'Rayons Complets & Commande Rapide',
     demoTitle: 'Faites votre sélection en quelques clics',
@@ -1205,11 +1204,11 @@ const List<ShopTheme> storefrontThemes = [
     id: 'sneaker-drop',
     name: 'Sneaker Drop',
     description:
-        'Streetwear & éditions limitées : dock flottant inférieur, bannière à découpe diagonale et cartes billets (ticket-stub) à encoches perforées',
+        'Streetwear & éditions limitées : dock flottant inférieur, bannière à découpe diagonale et cartes streetwear numérotées',
     category: 'Tech & Urbain',
     signature:
-        'Dock flottant + Découpe diagonale Streetwear + Cartes Tickets perforés',
-    sections: ['marquee', 'promo-banner'],
+        'Dock flottant + Découpe diagonale Streetwear + Cartes Drop numérotées',
+    sections: ['marquee'],
     demoShopName: 'Kicks Lab Officiel',
     demoEyebrow: 'Drop Exclusif & Stock Limité',
     demoTitle: 'Les pièces les plus recherchées du moment',

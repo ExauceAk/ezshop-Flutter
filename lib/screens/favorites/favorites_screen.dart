@@ -113,7 +113,10 @@ class FavoritesScreen extends StatelessWidget {
                     const BorderRadius.horizontal(left: Radius.circular(16)),
                 child: Image.network(
                   product.images.isNotEmpty ? product.images.first : '',
+                  width: 100,
+                  height: 100,
                   fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
                   errorBuilder: (_, __, ___) => const Icon(
                     Icons.image_outlined,
                     size: 30,

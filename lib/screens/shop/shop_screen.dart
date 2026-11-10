@@ -1121,6 +1121,8 @@ Future<void> _confirmDeleteShop(Shop shop) async {
                 color: const Color(0xFFF1F3F5),
                 child: Image.network(
                   product.images.isNotEmpty ? product.images.first : '',
+                  width: 80,
+                  height: 80,
                   fit: BoxFit.cover,
                   alignment: Alignment.topCenter,
                   errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, size: 28, color: AppTheme.textHint),

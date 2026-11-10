@@ -159,7 +159,6 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
   int get _cartCount => _cart.length;
 
   void _addToCart(PreviewProduct product) {
-    if (!product.isAvailable) return;
     setState(() {
       _cart.add(product.name);
     });
@@ -438,12 +437,10 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                 ),
                 const SizedBox(height: 18),
                 ElevatedButton.icon(
-                  onPressed: product.isAvailable
-                      ? () {
-                          _addToCart(product);
-                          Navigator.pop(ctx);
-                        }
-                      : null,
+                  onPressed: () {
+                    _addToCart(product);
+                    Navigator.pop(ctx);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: t.primary,
                     foregroundColor: Colors.white,
@@ -452,11 +449,9 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                       borderRadius: BorderRadius.circular(t.radius.clamp(6, 16)),
                     ),
                   ),
-                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                  icon: const Icon(Icons.shopping_bag_outlined, size: 18),
                   label: Text(
-                    product.isAvailable
-                        ? 'Commander sur WhatsApp'
-                        : 'Article épuisé',
+                    'Ajouter au panier',
                     style:
                         _body(t, 13, color: Colors.white, weight: FontWeight.w700),
                   ),
@@ -499,7 +494,6 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                     widget.products.isNotEmpty)
                   _buildFeaturedSpotlight(t, widget.products.first),
                 _buildCatalogSection(t),
-                if (sections.contains('promo-banner')) _buildPromoBanner(t),
                 if (sections.contains('lookbook')) _buildLookbook(t),
                 if (sections.contains('craftsmanship')) _buildCraftsmanship(t),
                 if (t.showAbout) _buildAboutSection(t),
@@ -1552,7 +1546,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildStats(ShopTheme t) {
-    final available = widget.products.where((p) => p.isAvailable).length;
+    final available = widget.products.length;
     final fresh = widget.products.where((p) => p.isNeuf).length;
 
     return Container(
@@ -1846,8 +1840,8 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
             (constraints.maxWidth - spacing * (columns - 1)) / columns;
         final inset = t.cardStyle == CardStyle.framed ? 8.0 : 0.0;
         final imageHeight =
-            (itemWidth / t.imageAspectRatio).clamp(110.0, 175.0) + inset;
-        const textHeight = 76.0;
+            (itemWidth / t.imageAspectRatio).clamp(110.0, 175.0) + inset + 10.0;
+        const textHeight = 82.0;
 
         final rows = <Widget>[];
         for (var start = 0; start < items.length; start += columns) {
@@ -1887,7 +1881,6 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
     final isBaobab = t.id == 'baobab';
     final isVendome = t.id == 'vendome';
     final isSneaker = t.id == 'sneaker-drop';
-    final isSuperMarche = t.id == 'super-marche';
 
     return GestureDetector(
       onTap: () => _showProductDetail(product),
@@ -1930,6 +1923,8 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                           : BorderRadius.zero,
                       child: Image.network(
                         product.imageUrl,
+                        width: double.infinity,
+                        height: double.infinity,
                         fit: BoxFit.cover,
                         alignment: Alignment.topCenter,
                         errorBuilder: (_, __, ___) =>
@@ -1959,33 +1954,16 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isSuperMarche && product.oldPrice != null
-                                ? t.accent
-                                : (product.isNeuf ? t.primary : t.accent),
+                            color: product.isNeuf ? t.primary : t.accent,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            isSuperMarche && product.oldPrice != null
-                                ? 'PROMO'
-                                : (product.isNeuf ? 'Neuf' : 'Occas.'),
+                            product.isNeuf ? 'Neuf' : 'Occas.',
                             style: _body(
                               t,
                               8,
                               color: Colors.white,
                               weight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (!product.isAvailable)
-                      Positioned.fill(
-                        child: ColoredBox(
-                          color: Colors.black.withValues(alpha: 0.55),
-                          child: Center(
-                            child: Text(
-                              'ÉPUISÉ',
-                              style: _body(t, 10,
-                                  color: Colors.white, weight: FontWeight.w800),
                             ),
                           ),
                         ),
@@ -2037,15 +2015,6 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                                   weight: FontWeight.w800,
                                 ),
                               ),
-                              if (product.oldPrice != null) ...[
-                                const SizedBox(width: 4),
-                                Text(
-                                  _formatPrice(product.oldPrice!),
-                                  style: _body(t, 9, color: t.muted).copyWith(
-                                    decoration: TextDecoration.lineThrough,
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         ),
@@ -2057,9 +2026,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                           width: 24,
                           height: 24,
                           decoration: BoxDecoration(
-                            color: product.isAvailable
-                                ? t.primary
-                                : t.muted.withValues(alpha: 0.3),
+                            color: t.primary,
                             borderRadius:
                                 BorderRadius.circular(t.radius.clamp(4, 8)),
                           ),
@@ -2170,11 +2137,11 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: product.isAvailable ? t.primary : t.muted,
+                      color: t.primary,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      product.isAvailable ? '+ Ajouter' : 'Épuisé',
+                      'Ajouter au panier',
                       style: _body(t, 9,
                           color: Colors.white, weight: FontWeight.w700),
                     ),
@@ -2373,54 +2340,6 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                   style: _body(t, 12, color: t.primary, weight: FontWeight.w800),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPromoBanner(ShopTheme t) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [t.primary, t.primaryDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(t.radius.clamp(6, 20)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'OFFRE PRIVILÈGE',
-                  style: _body(t, 9, color: Colors.white70, weight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Sélection en série limitée chez $_shopName',
-                  style: _heading(t, 15,
-                      color: Colors.white, weight: FontWeight.w700),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              'DIRECT-WA',
-              style: _body(t, 10, color: t.primary, weight: FontWeight.w800),
             ),
           ),
         ],

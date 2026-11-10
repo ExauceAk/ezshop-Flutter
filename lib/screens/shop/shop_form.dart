@@ -998,7 +998,6 @@ class _ShopFormState extends State<ShopForm> {
                   ),
                   decoration: InputDecoration(
                     labelText: l10n.t('form.whatsapp'),
-                    hintText: l10n.t('form.whatsappHint'),
                     counterText: '',
                     enabledBorder: isPhoneValid ? null : warningBorder,
                     focusedBorder: isPhoneValid ? null : warningBorder,

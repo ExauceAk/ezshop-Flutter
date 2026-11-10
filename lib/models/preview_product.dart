@@ -70,7 +70,6 @@ const List<PreviewProduct> samplePreviewProducts = [
     description:
         'Cocotte artisanale à diffusion thermique homogène pour mijoter, rôtir et servir directement à table avec élégance.',
     price: '28500',
-    oldPrice: '34000',
     imageUrl:
         'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=800&q=80',
     imageUrls: [
@@ -103,7 +102,6 @@ const List<PreviewProduct> samplePreviewProducts = [
     description:
         'Façonné dans une seule pièce de bois massif avec rebords adoucis à la main et finition à l’huile naturelle.',
     price: '11500',
-    oldPrice: '13500',
     imageUrl:
         'https://images.unsplash.com/photo-1603199506016-b9a594b593c0?auto=format&fit=crop&w=800&q=80',
     imageUrls: [
@@ -144,7 +142,7 @@ const List<PreviewProduct> samplePreviewProducts = [
     ],
     isNeuf: true,
     isNegotiable: false,
-    isAvailable: false,
+    isAvailable: true,
     category: 'Art de la Table',
   ),
 ];
