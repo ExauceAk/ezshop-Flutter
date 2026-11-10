@@ -127,6 +127,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   child: Image.network(
                                     images[index],
                                     fit: BoxFit.cover,
+                                    alignment: Alignment.topCenter,
                                     errorBuilder: (_, __, ___) => const Center(
                                       child: Icon(Icons.image_outlined, size: 60, color: AppTheme.textHint),
                                     ),
@@ -186,6 +187,56 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (images.length > 1) ...[
+                    SizedBox(
+                      height: 64,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: images.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final active = _currentImageIndex == index;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() => _currentImageIndex = index);
+                              _pageController.animateToPage(
+                                index,
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeOut,
+                              );
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: active ? AppTheme.primary : AppTheme.border,
+                                  width: active ? 2.5 : 1,
+                                ),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  images[index],
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.topCenter,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.image_outlined,
+                                    size: 20,
+                                    color: AppTheme.textHint,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   // Product name and price
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,

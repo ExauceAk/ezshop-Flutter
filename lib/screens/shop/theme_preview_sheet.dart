@@ -246,10 +246,12 @@ class _ThemePreviewSheetState extends State<_ThemePreviewSheet> {
                 Expanded(
                   child: TextField(
                     controller: controller,
+                    maxLength: 7,
                     decoration: InputDecoration(
                       labelText: ctx.l10n.t('preview.hexCode'),
                       hintText: '#176B55',
                       isDense: true,
+                      counterText: '',
                     ),
                   ),
                 ),

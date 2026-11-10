@@ -178,10 +178,12 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           const SizedBox(height: 8),
           TextField(
             controller: _password,
+            maxLength: 64,
             obscureText: _obscured,
             autocorrect: false,
             decoration: InputDecoration(
               hintText: l10n.t('delete.passwordHint'),
+              counterText: '',
               errorText: _error,
               prefixIcon: const Icon(Icons.lock_outline_rounded),
               suffixIcon: IconButton(

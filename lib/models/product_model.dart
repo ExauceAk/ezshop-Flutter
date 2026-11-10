@@ -38,10 +38,19 @@ class Product {
     this.isFavorite = false,
   });
 
-  /// Returns all images: imageUrls if available, else [imageUrl]
+  /// Returns all unique product images, starting with [imageUrl] followed by [imageUrls].
   List<String> get allImages {
-    if (imageUrls.isNotEmpty) return imageUrls;
-    return [imageUrl];
+    final result = <String>[];
+    if (imageUrl.trim().isNotEmpty) {
+      result.add(imageUrl.trim());
+    }
+    for (final url in imageUrls) {
+      final trimmed = url.trim();
+      if (trimmed.isNotEmpty && !result.contains(trimmed)) {
+        result.add(trimmed);
+      }
+    }
+    return result;
   }
 
   /// Alias used in UI screens

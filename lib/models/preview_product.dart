@@ -10,6 +10,7 @@ class PreviewProduct {
     required this.description,
     required this.price,
     required this.imageUrl,
+    this.imageUrls = const [],
     this.oldPrice,
     this.isNeuf = true,
     this.isNegotiable = false,
@@ -24,10 +25,25 @@ class PreviewProduct {
   final String price;
   final String? oldPrice;
   final String imageUrl;
+  final List<String> imageUrls;
   final bool isNeuf;
   final bool isNegotiable;
   final bool isAvailable;
   final String category;
+
+  List<String> get allImages {
+    final result = <String>[];
+    if (imageUrl.trim().isNotEmpty) {
+      result.add(imageUrl.trim());
+    }
+    for (final url in imageUrls) {
+      final trimmed = url.trim();
+      if (trimmed.isNotEmpty && !result.contains(trimmed)) {
+        result.add(trimmed);
+      }
+    }
+    return result;
+  }
 }
 
 /// Sample catalogue, mirroring the one the Next preview route uses so both
@@ -40,6 +56,10 @@ const List<PreviewProduct> samplePreviewProducts = [
     price: '14500',
     imageUrl:
         'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=800&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=800&q=80',
+    ],
     isNeuf: true,
     isNegotiable: false,
     isAvailable: true,
@@ -53,6 +73,10 @@ const List<PreviewProduct> samplePreviewProducts = [
     oldPrice: '34000',
     imageUrl:
         'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=800&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1603199506016-b9a594b593c0?auto=format&fit=crop&w=800&q=80',
+    ],
     isNeuf: true,
     isNegotiable: true,
     isAvailable: true,
@@ -65,6 +89,10 @@ const List<PreviewProduct> samplePreviewProducts = [
     price: '22000',
     imageUrl:
         'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=800&q=80',
+    ],
     isNeuf: true,
     isNegotiable: false,
     isAvailable: true,
@@ -78,6 +106,10 @@ const List<PreviewProduct> samplePreviewProducts = [
     oldPrice: '13500',
     imageUrl:
         'https://images.unsplash.com/photo-1603199506016-b9a594b593c0?auto=format&fit=crop&w=800&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1603199506016-b9a594b593c0?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=800&q=80',
+    ],
     isNeuf: true,
     isNegotiable: true,
     isAvailable: true,
@@ -90,6 +122,10 @@ const List<PreviewProduct> samplePreviewProducts = [
     price: '16900',
     imageUrl:
         'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=800&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80',
+    ],
     isNeuf: false,
     isNegotiable: true,
     isAvailable: true,
@@ -102,6 +138,10 @@ const List<PreviewProduct> samplePreviewProducts = [
     price: '19500',
     imageUrl:
         'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=800&q=80',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=800&q=80',
+    ],
     isNeuf: true,
     isNegotiable: false,
     isAvailable: false,

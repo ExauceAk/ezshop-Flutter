@@ -110,6 +110,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _nameController,
+                      maxLength: 20,
                       textCapitalization: TextCapitalization.words,
                       decoration: InputDecoration(
                         hintText: context.l10n.t('auth.signup.nameHint'),
@@ -122,9 +123,11 @@ class _SignupScreenState extends State<SignupScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _emailController,
+                      maxLength: 100,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
                         hintText: context.l10n.t('auth.login.emailHint'),
+                        counterText: '',
                         prefixIcon: Icon(Icons.email_outlined, color: AppTheme.textHint),
                       ),
                       validator: (v) {
@@ -138,9 +141,11 @@ class _SignupScreenState extends State<SignupScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _passwordController,
+                      maxLength: 64,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
                         hintText: '••••••••',
+                        counterText: '',
                         prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.textHint),
                         suffixIcon: IconButton(
                           icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: AppTheme.textHint),
@@ -158,9 +163,11 @@ class _SignupScreenState extends State<SignupScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _confirmPasswordController,
+                      maxLength: 64,
                       obscureText: _obscureConfirm,
                       decoration: InputDecoration(
                         hintText: '••••••••',
+                        counterText: '',
                         prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.textHint),
                         suffixIcon: IconButton(
                           icon: Icon(_obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: AppTheme.textHint),

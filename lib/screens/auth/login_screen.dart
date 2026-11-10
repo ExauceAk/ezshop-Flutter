@@ -104,9 +104,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _emailController,
+                      maxLength: 100,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
                         hintText: context.l10n.t('auth.login.emailHint'),
+                        counterText: '',
                         prefixIcon: Icon(Icons.email_outlined, color: AppTheme.textHint),
                       ),
                       validator: (v) {
@@ -120,9 +122,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _passwordController,
+                      maxLength: 64,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
                         hintText: '••••••••',
+                        counterText: '',
                         prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.textHint),
                         suffixIcon: IconButton(
                           icon: Icon(

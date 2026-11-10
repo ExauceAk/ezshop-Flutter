@@ -417,29 +417,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 TextField(
                   controller: nameController,
                   enabled: !saving,
+                  maxLength: 20,
                   decoration: InputDecoration(
                     hintText: context.l10n.t('profile.edit.nameHint'),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Text(context.l10n.t('profile.edit.phone'),
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: phoneController,
                   enabled: !saving,
+                  maxLength: 20,
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
                     hintText: context.l10n.t('profile.edit.phoneHint'),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Text(context.l10n.t('profile.edit.address'),
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: addressController,
                   enabled: !saving,
+                  maxLength: 150,
                   decoration: InputDecoration(
                     hintText: context.l10n.t('profile.edit.addressHint'),
                   ),

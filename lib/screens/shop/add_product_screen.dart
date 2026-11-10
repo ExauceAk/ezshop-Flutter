@@ -8,6 +8,7 @@ import '../../models/product_model.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_toast.dart';
+import '../../utils/image_pick.dart';
 
 /// Product creation and edition, in one screen.
 ///
@@ -64,9 +65,29 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Future<void> _pickImages() async {
     final images = await _picker.pickMultiImage(imageQuality: 80);
-    if (images.isNotEmpty) {
+    if (images.isEmpty) return;
+
+    final validFiles = <File>[];
+    for (final x in images) {
+      final file = File(x.path);
+      if (!mounted) return;
+      if (await validateImageFileSize(context, file)) {
+        validFiles.add(file);
+      }
+    }
+
+    if (validFiles.length > 10) {
+      if (mounted) {
+        AppToast.info(
+          context.l10n.t('product.form.maxPhotos'),
+          context: context,
+        );
+      }
+    }
+
+    if (validFiles.isNotEmpty && mounted) {
       setState(() {
-        _selectedImages = images.map((x) => File(x.path)).toList();
+        _selectedImages = validFiles.take(10).toList();
       });
     }
   }
@@ -124,6 +145,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                               image: DecorationImage(
                                 image: FileImage(entry.value),
                                 fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
                               ),
                             ),
                           ),
@@ -158,6 +180,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             image: DecorationImage(
                               image: NetworkImage(url),
                               fit: BoxFit.cover,
+                              alignment: Alignment.topCenter,
                             ),
                           ),
                         ),
@@ -199,23 +222,35 @@ class _AddProductScreenState extends State<AddProductScreen> {
               // Product name
               _buildLabel(context.l10n.t('product.form.name')),
               const SizedBox(height: 8),
-              _buildTextField(_nameController,
-                  context.l10n.t('product.form.nameHint')),
+              _buildTextField(
+                _nameController,
+                context.l10n.t('product.form.nameHint'),
+                maxLength: 20,
+              ),
 
               const SizedBox(height: 20),
 
               // Description
               _buildLabel(context.l10n.t('product.form.description')),
               const SizedBox(height: 8),
-              _buildTextField(_descController,
-                  context.l10n.t('product.form.descriptionHint'), maxLines: 3),
+              _buildTextField(
+                _descController,
+                context.l10n.t('product.form.descriptionHint'),
+                maxLines: 3,
+                maxLength: 1000,
+              ),
 
               const SizedBox(height: 20),
 
               // Price
               _buildLabel(context.l10n.t('product.form.price')),
               const SizedBox(height: 8),
-              _buildTextField(_priceController, '0.00', keyboardType: TextInputType.number),
+              _buildTextField(
+                _priceController,
+                '0.00',
+                keyboardType: TextInputType.number,
+                maxLength: 12,
+              ),
 
               const SizedBox(height: 20),
 
@@ -433,6 +468,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     TextEditingController controller,
     String hint, {
     int maxLines = 1,
+    int? maxLength,
     TextInputType? keyboardType,
   }) {
     return Container(
@@ -443,6 +479,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       child: TextFormField(
         controller: controller,
         maxLines: maxLines,
+        maxLength: maxLength,
         keyboardType: keyboardType,
         decoration: InputDecoration(
           hintText: hint,

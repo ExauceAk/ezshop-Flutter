@@ -62,8 +62,10 @@ class _SearchScreenState extends State<SearchScreen> {
                   child: TextField(
                     controller: _searchController,
                     autofocus: false,
+                    maxLength: 60,
                     onChanged: (v) => provider.setSearchQuery(v),
                     decoration: InputDecoration(
+                      counterText: '',
                       hintText: context.l10n.t('search.hint'),
                       prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textHint),
                       suffixIcon: provider.searchQuery.isNotEmpty

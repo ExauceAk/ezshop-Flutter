@@ -9,6 +9,7 @@ import '../../models/shop_theme_config.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_toast.dart';
+import '../../utils/phone_countries.dart';
 import 'shop_form.dart';
 import 'theme_preview_sheet.dart';
 
@@ -56,21 +57,7 @@ class _EditShopScreenState extends State<EditShopScreen> {
 
   /// Splits a stored `wa.me` link back into prefix and national number.
   static (String, String) _phoneParts(String link) {
-    final digits = link.replaceAll(RegExp(r'[^0-9]'), '');
-    for (final code in const [
-      '221',
-      '225',
-      '223',
-      '226',
-      '237',
-      '33',
-      '1',
-    ]) {
-      if (digits.startsWith(code) && digits.length > code.length) {
-        return (code, digits.substring(code.length));
-      }
-    }
-    return ('221', digits);
+    return splitStoredPhoneLink(link);
   }
 
   @override

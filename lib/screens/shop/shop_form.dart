@@ -9,6 +9,7 @@ import '../../models/shop_theme.dart';
 import '../../models/shop_theme_config.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/image_pick.dart';
+import '../../utils/phone_countries.dart';
 import '../../widgets/mini_theme_preview.dart';
 import 'theme_preview_sheet.dart';
 
@@ -226,9 +227,6 @@ class _ShopFormState extends State<ShopForm> {
   /// so subsequent changes to the shop name no longer overwrite it.
   late bool _slugCustomised;
 
-  /// Prefixes offered for the phone number.
-  static const _countryCodes = ['221', '225', '223', '226', '237', '33', '1'];
-
   late final TextEditingController _name;
   late final TextEditingController _whatsapp;
   late final TextEditingController _heroTitle;
@@ -403,10 +401,12 @@ class _ShopFormState extends State<ShopForm> {
                 Expanded(
                   child: TextField(
                     controller: controller,
+                    maxLength: 7,
                     decoration: InputDecoration(
                       labelText: ctx.l10n.t('preview.hexCode'),
                       hintText: '#176B55',
                       isDense: true,
+                      counterText: '',
                     ),
                   ),
                 ),
@@ -451,7 +451,7 @@ class _ShopFormState extends State<ShopForm> {
           ),
           const SizedBox(height: 24),
 
-          _field(_name, l10n.t('form.name'), lines: 1),
+          _field(_name, l10n.t('form.name'), lines: 1, maxLength: 20),
           _phoneField(),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,12 +472,13 @@ class _ShopFormState extends State<ShopForm> {
           const SizedBox(height: 12),
 
           _sectionTitle(l10n.t('form.coverSection')),
-          _field(_heroTitle, l10n.t('form.heroTitle'), lines: 1),
+          _field(_heroTitle, l10n.t('form.heroTitle'), lines: 1, maxLength: 80),
           _field(
             _heroSubtitle,
             l10n.t('form.heroDescription'),
             hint: l10n.t('form.heroDescriptionHint'),
             lines: 3,
+            maxLength: 1000,
           ),
           _label(l10n.t('form.coverImage')),
           const SizedBox(height: 8),
@@ -491,12 +492,13 @@ class _ShopFormState extends State<ShopForm> {
           const SizedBox(height: 28),
 
           _sectionTitle(l10n.t('form.aboutSection')),
-          _field(_aboutTitle, l10n.t('form.aboutTitle'), lines: 1),
+          _field(_aboutTitle, l10n.t('form.aboutTitle'), lines: 1, maxLength: 80),
           _field(
             _aboutText,
             l10n.t('form.aboutText'),
             hint: l10n.t('form.aboutTextHint'),
             lines: 4,
+            maxLength: 1000,
           ),
           const SizedBox(height: 8),
 
@@ -813,6 +815,7 @@ class _ShopFormState extends State<ShopForm> {
               l10n.t('form.payment.field${i + 1}'),
               hint: l10n.t('form.payment.hint'),
               lines: 1,
+              maxLength: 100,
               fieldIndex: i,
             ),
         ],
@@ -828,6 +831,7 @@ class _ShopFormState extends State<ShopForm> {
       child: TextFormField(
         controller: _slug,
         maxLines: 1,
+        maxLength: 30,
         decoration: InputDecoration(
           labelText: l10n.t('form.domain'),
           hintText: l10n.t('form.domainHint'),
@@ -853,6 +857,7 @@ class _ShopFormState extends State<ShopForm> {
     TextEditingController controller,
     String label, {
     int lines = 1,
+    int? maxLength,
     String? hint,
     String? helper,
     TextInputType? keyboard,
@@ -863,6 +868,7 @@ class _ShopFormState extends State<ShopForm> {
       child: TextFormField(
         controller: controller,
         maxLines: lines,
+        maxLength: maxLength,
         keyboardType: keyboard,
         decoration: InputDecoration(
           labelText: label,
@@ -899,54 +905,144 @@ class _ShopFormState extends State<ShopForm> {
   }
 
   Widget _phoneField() {
+    final l10n = context.l10n;
+    final country = findPhoneCountryByDialCode(_data.countryCode);
+    final isPhoneValid = isNationalPhoneValid(country, _whatsapp.text);
+    const warningOrange = Color(0xFFF59E0B);
+
+    final warningBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: warningOrange, width: 1.8),
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 110,
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.border),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                isExpanded: true,
-                value: _countryCodes.contains(_data.countryCode)
-                    ? _data.countryCode
-                    : _countryCodes.first,
-                items: [
-                  for (final code in _countryCodes)
-                    DropdownMenuItem(
-                      value: code,
-                      child:
-                          Text('+$code', style: GoogleFonts.poppins(fontSize: 14)),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    _update(_data.copyWith(countryCode: value));
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showPhoneCountryPicker(
+                    context,
+                    selected: country,
+                  );
+                  if (picked != null) {
+                    _update(_data.copyWith(countryCode: picked.dialCode));
                   }
                 },
+                child: Container(
+                  width: 122,
+                  height: 56,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isPhoneValid ? AppTheme.border : warningOrange,
+                      width: isPhoneValid ? 1 : 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          country.isoCode,
+                          style: GoogleFonts.poppins(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '+${country.dialCode}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 18,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextFormField(
-              controller: _whatsapp,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: context.l10n.t('form.whatsapp'),
-                hintText: context.l10n.t('form.whatsappHint'),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextFormField(
+                  controller: _whatsapp,
+                  keyboardType: TextInputType.phone,
+                  maxLength: 15,
+                  style: GoogleFonts.poppins(
+                    color: isPhoneValid ? AppTheme.textPrimary : warningOrange,
+                    fontWeight:
+                        isPhoneValid ? FontWeight.w400 : FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: l10n.t('form.whatsapp'),
+                    hintText: l10n.t('form.whatsappHint'),
+                    counterText: '',
+                    enabledBorder: isPhoneValid ? null : warningBorder,
+                    focusedBorder: isPhoneValid ? null : warningBorder,
+                    suffixIcon: isPhoneValid
+                        ? null
+                        : const Icon(
+                            Icons.warning_amber_rounded,
+                            color: warningOrange,
+                            size: 20,
+                          ),
+                  ),
+                  onChanged: (value) => _update(_data.copyWith(whatsapp: value)),
+                ),
               ),
-              onChanged: (value) => _update(_data.copyWith(whatsapp: value)),
-            ),
+            ],
           ),
+          if (!isPhoneValid) ...[
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 15,
+                  color: warningOrange,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    l10n.t('form.whatsappInvalid', {
+                      'country': country.localizedName(l10n.language),
+                      'expected': country.expectedDigitsLabel,
+                    }),
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: warningOrange,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1019,11 +1115,16 @@ class _ImageSlot extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: file != null
-            ? Image.file(file!, fit: BoxFit.cover)
+            ? Image.file(
+                file!,
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+              )
             : url.isNotEmpty
                 ? Image.network(
                     url,
                     fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
                     errorBuilder: (_, __, ___) => const _Placeholder(),
                   )
                 : const _Placeholder(),

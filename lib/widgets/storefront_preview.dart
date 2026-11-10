@@ -165,122 +165,307 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
     });
   }
 
+  void _openFullImage(BuildContext context, List<String> images, int initialIndex) {
+    int activeIndex = initialIndex;
+    final pageController = PageController(initialPage: initialIndex);
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.92),
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
+            children: [
+              PageView.builder(
+                controller: pageController,
+                itemCount: images.length,
+                onPageChanged: (idx) => setDialogState(() => activeIndex = idx),
+                itemBuilder: (_, idx) => InteractiveViewer(
+                  minScale: 1.0,
+                  maxScale: 4.0,
+                  child: Center(
+                    child: Image.network(
+                      images[idx],
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.image_outlined,
+                        size: 56,
+                        color: Colors.white54,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: MediaQuery.paddingOf(dialogCtx).top + 12,
+                right: 16,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(dialogCtx),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ),
+              if (images.length > 1)
+                Positioned(
+                  bottom: 28,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      images.length,
+                      (idx) => Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: activeIndex == idx ? 20 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: activeIndex == idx
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ).whenComplete(pageController.dispose);
+  }
+
   void _showProductDetail(PreviewProduct product) {
     final t = _activeTheme;
+    final images = product.allImages;
+    int selectedImageIndex = 0;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: t.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border.all(color: t.border),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: t.muted.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final currentImage = images.isNotEmpty
+              ? images[selectedImageIndex.clamp(0, images.length - 1)]
+              : product.imageUrl;
+          return Container(
+            decoration: BoxDecoration(
+              color: t.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border.all(color: t.border),
             ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(t.radius.clamp(6, 20)),
-              child: SizedBox(
-                height: 220,
-                child: Image.network(
-                  product.imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => ColoredBox(color: t.background),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (product.category.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: t.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      product.category.toUpperCase(),
-                      style: _body(t, 10, color: t.primary, weight: FontWeight.w700),
-                    ),
-                  ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: (product.isNeuf ? t.primary : t.accent)
-                        .withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    product.isNeuf ? 'Neuf' : 'Occasion',
-                    style: _body(
-                      t,
-                      10,
-                      color: product.isNeuf ? t.primary : t.accent,
-                      weight: FontWeight.w700,
+                      color: t.muted.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => _openFullImage(
+                    ctx,
+                    images.isNotEmpty ? images : [product.imageUrl],
+                    selectedImageIndex,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(t.radius.clamp(6, 20)),
+                    child: SizedBox(
+                      height: 220,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            currentImage,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            errorBuilder: (_, __, ___) =>
+                                ColoredBox(color: t.background),
+                          ),
+                          Positioned(
+                            right: 10,
+                            bottom: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(99),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.zoom_out_map_rounded,
+                                    size: 12,
+                                    color: Colors.white,
+                                  ),
+                                  if (images.length > 1) ...[
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      '${selectedImageIndex + 1}/${images.length}',
+                                      style: _body(
+                                        t,
+                                        10,
+                                        color: Colors.white,
+                                        weight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (images.length > 1) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 54,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: images.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (_, idx) {
+                        final active = idx == selectedImageIndex;
+                        return GestureDetector(
+                          onTap: () =>
+                              setSheetState(() => selectedImageIndex = idx),
+                          child: Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: active ? t.primary : t.border,
+                                width: active ? 2 : 1,
+                              ),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: Image.network(
+                                images[idx],
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                                errorBuilder: (_, __, ___) =>
+                                    ColoredBox(color: t.background),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    if (product.category.isNotEmpty)
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: t.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          product.category.toUpperCase(),
+                          style: _body(t, 10,
+                              color: t.primary, weight: FontWeight.w700),
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: (product.isNeuf ? t.primary : t.accent)
+                            .withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        product.isNeuf ? 'Neuf' : 'Occasion',
+                        style: _body(
+                          t,
+                          10,
+                          color: product.isNeuf ? t.primary : t.accent,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _formatPrice(product.price),
+                      style: _heading(t, 18,
+                          color: t.primary, weight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 Text(
-                  _formatPrice(product.price),
-                  style: _heading(t, 18, color: t.primary, weight: FontWeight.w800),
+                  product.name,
+                  style: _heading(t, 20, weight: FontWeight.w700),
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  product.description,
+                  style: _body(t, 13, color: t.muted, height: 1.5),
+                ),
+                const SizedBox(height: 18),
+                ElevatedButton.icon(
+                  onPressed: product.isAvailable
+                      ? () {
+                          _addToCart(product);
+                          Navigator.pop(ctx);
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: t.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(t.radius.clamp(6, 16)),
+                    ),
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                  label: Text(
+                    product.isAvailable
+                        ? 'Commander sur WhatsApp'
+                        : 'Article épuisé',
+                    style:
+                        _body(t, 13, color: Colors.white, weight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(height: 8),
               ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              product.name,
-              style: _heading(t, 20, weight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              product.description,
-              style: _body(t, 13, color: t.muted, height: 1.5),
-            ),
-            const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: product.isAvailable
-                  ? () {
-                      _addToCart(product);
-                      Navigator.pop(ctx);
-                    }
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: t.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(t.radius.clamp(6, 16)),
-                ),
-              ),
-              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-              label: Text(
-                product.isAvailable
-                    ? 'Commander sur WhatsApp'
-                    : 'Article épuisé',
-                style: _body(t, 13, color: Colors.white, weight: FontWeight.w700),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -650,11 +835,16 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
 
   Widget _buildHeroImageWidget(ShopTheme t, {BoxFit fit = BoxFit.cover}) {
     if (widget.bannerFile != null) {
-      return Image.file(widget.bannerFile!, fit: fit);
+      return Image.file(
+        widget.bannerFile!,
+        fit: fit,
+        alignment: Alignment.topCenter,
+      );
     }
     return Image.network(
       _heroImageUrl,
       fit: fit,
+      alignment: Alignment.topCenter,
       errorBuilder: (_, __, ___) => DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -1102,6 +1292,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                         child: Image.network(
                           widget.products.firstOrNull?.imageUrl ?? _heroImageUrl,
                           fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
                           errorBuilder: (_, __, ___) => _buildHeroImageWidget(t),
                         ),
                       ),
@@ -1520,6 +1711,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                       width: 54,
                       height: 54,
                       fit: BoxFit.cover,
+                      alignment: Alignment.topCenter,
                       errorBuilder: (_, __, ___) =>
                           Container(width: 54, height: 54, color: t.background),
                     ),
@@ -1586,6 +1778,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                       Image.network(
                         lead.imageUrl,
                         fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
                         errorBuilder: (_, __, ___) =>
                             ColoredBox(color: t.background),
                       ),
@@ -1738,6 +1931,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                       child: Image.network(
                         product.imageUrl,
                         fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
                         errorBuilder: (_, __, ___) =>
                             ColoredBox(color: t.background),
                       ),
@@ -1906,6 +2100,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                 width: 68,
                 height: 64,
                 fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
                 errorBuilder: (_, __, ___) =>
                     Container(width: 68, height: 64, color: t.background),
               ),
@@ -2151,6 +2346,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
               width: 84,
               height: 84,
               fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
               errorBuilder: (_, __, ___) =>
                   Container(width: 84, height: 84, color: t.background),
             ),
@@ -2261,6 +2457,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                         child: Image.network(
                           photos[i].imageUrl,
                           fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
                           height: 120,
                           errorBuilder: (_, __, ___) =>
                               Container(height: 120, color: t.background),

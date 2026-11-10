@@ -1122,6 +1122,7 @@ Future<void> _confirmDeleteShop(Shop shop) async {
                 child: Image.network(
                   product.images.isNotEmpty ? product.images.first : '',
                   fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
                   errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, size: 28, color: AppTheme.textHint),
                 ),
               ),
@@ -1160,6 +1161,18 @@ Future<void> _confirmDeleteShop(Shop shop) async {
                   Text(product.name,
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                  if (product.description.trim().isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      product.description.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11.5,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(formatPrice(product.price),
                       style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.primary)),
@@ -1342,8 +1355,10 @@ class _DeleteShopDialogState extends State<_DeleteShopDialog> {
               controller: widget.nameController,
               enabled: !_deleting,
               autocorrect: false,
+              maxLength: 20,
               decoration: InputDecoration(
                 hintText: widget.shop.name,
+                counterText: '',
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 10,

@@ -54,6 +54,7 @@ class ProductCard extends StatelessWidget {
                       child: Image.network(
                         product.images.isNotEmpty ? product.images.first : '',
                         fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
                         errorBuilder: (_, __, ___) => const Icon(
                           Icons.image_outlined,
                           size: 40,
@@ -144,11 +145,20 @@ class ProductCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    // Not Flexible: in a short card the tag was squeezed until
-                    // its text was unreadable. The card itself is taller now, so
-                    // the tag can keep its natural height.
-                    ProductPriceTag(product: product),
+                    if (product.description.trim().isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        product.description.trim(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.5,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    ProductPriceTag(product: product, fontSize: 11),
                     const Spacer(),
                     Text(
                       formatPrice(product.price),

@@ -95,9 +95,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _emailController,
+          maxLength: 100,
           keyboardType: TextInputType.emailAddress,
           decoration: const InputDecoration(
             hintText: 'votre@email.com',
+            counterText: '',
             prefixIcon: Icon(Icons.email_outlined, color: AppTheme.textHint),
           ),
         ),

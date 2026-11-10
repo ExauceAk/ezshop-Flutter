@@ -103,7 +103,7 @@ class AppStrings {
 
     // ─── Home ───
     'home.guest': 'Invité',
-    'home.banner.tag': '🏪 EZ Shop',
+    'home.banner.tag': 'EZ Shop',
     'home.banner.title': 'Créez votre propre boutique',
     'home.banner.subtitle': 'Proposez vos produits et vendez en ligne',
     'home.banner.cta': 'Commencer →',
@@ -458,6 +458,13 @@ class AppStrings {
     'form.colors.reset': '↺ Réinitialiser aux couleurs du thème',
     'form.colors.customActive': 'Palette personnalisée active',
     'form.colors.defaultActive': 'Palette d’origine du thème',
+    'form.imageTooLarge': 'Cette image dépasse la limite autorisée de 50 Mo',
+    'form.whatsappInvalid':
+        'Ce numéro ne semble pas valide pour {country} ({expected} chiffres attendus).',
+    'form.country.title': 'Choisir un indicatif pays',
+    'form.country.search': 'Rechercher un pays ou un indicatif',
+    'form.country.empty': 'Aucun pays trouvé',
+    'product.form.maxPhotos': 'Maximum 10 photos par produit',
   };
 
   // ═══════════════════════════════════
@@ -505,7 +512,7 @@ class AppStrings {
 
     // ─── Home ───
     'home.guest': 'Guest',
-    'home.banner.tag': '🏪 EZ Shop',
+    'home.banner.tag': 'EZ Shop',
     'home.banner.title': 'Create your own shop',
     'home.banner.subtitle': 'List your products and sell online',
     'home.banner.cta': 'Get started →',
@@ -854,6 +861,13 @@ class AppStrings {
     'form.colors.reset': '↺ Reset to theme default colours',
     'form.colors.customActive': 'Custom palette active',
     'form.colors.defaultActive': 'Default theme palette',
+    'form.imageTooLarge': 'This image exceeds the 50 MB maximum limit',
+    'form.whatsappInvalid':
+        'This number does not look valid for {country} ({expected} digits expected).',
+    'form.country.title': 'Select a country dial code',
+    'form.country.search': 'Search a country or dial code',
+    'form.country.empty': 'No country found',
+    'product.form.maxPhotos': 'Maximum 10 photos per product',
   };
 }
 
