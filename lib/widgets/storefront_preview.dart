@@ -51,7 +51,7 @@ class StorefrontPreview extends StatefulWidget {
 class _StorefrontPreviewState extends State<StorefrontPreview> {
   String _selectedCategory = 'Tous';
   String _searchQuery = '';
-  final Map<String, int> _cart = {};
+  final Set<String> _cart = {};
   int? _openFaqIndex = 0;
 
   ShopTheme get _activeTheme => widget.theme.applyCustomColors(widget.config);
@@ -149,22 +149,19 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
         return false;
       }
       if (_searchQuery.trim().isNotEmpty) {
-        final q = _searchQuery.toLowerCase();
-        return p.name.toLowerCase().contains(q) ||
-            p.description.toLowerCase().contains(q) ||
-            p.category.toLowerCase().contains(q);
+        final q = _searchQuery.trim().toLowerCase();
+        return p.name.toLowerCase().contains(q);
       }
       return true;
     }).toList();
   }
 
-  int get _cartCount =>
-      _cart.values.fold(0, (previous, count) => previous + count);
+  int get _cartCount => _cart.length;
 
   void _addToCart(PreviewProduct product) {
     if (!product.isAvailable) return;
     setState(() {
-      _cart[product.name] = (_cart[product.name] ?? 0) + 1;
+      _cart.add(product.name);
     });
   }
 
@@ -1036,7 +1033,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                         decoration: InputDecoration(
                           isDense: true,
                           border: InputBorder.none,
-                          hintText: 'Rechercher une référence ou un rayon…',
+                          hintText: 'Rechercher un produit',
                           hintStyle: _body(t, 11.5, color: Colors.black45),
                         ),
                       ),
@@ -1532,22 +1529,11 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                items[i].name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: _heading(t, 14, weight: FontWeight.w700),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '• • • •',
-                              style: _body(t, 10, color: t.muted),
-                            ),
-                          ],
+                        Text(
+                          items[i].name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: _heading(t, 14, weight: FontWeight.w700),
                         ),
                         const SizedBox(height: 3),
                         Text(
@@ -2019,7 +2005,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _marqueeItem(t, '★ BIENVENUE CHEZ ${_shopName.toUpperCase()}'),
+            _marqueeItem(t, 'BIENVENUE CHEZ ${_shopName.toUpperCase()}'),
             _marqueeItem(t, '• COMMANDE DIRECTE SUR WHATSAPP'),
             _marqueeItem(t, '• STOCK VÉRIFIÉ EN TEMPS RÉEL'),
           ],
@@ -2175,7 +2161,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '★ PIÈCE VEDETTE',
+                  'PIÈCE VEDETTE',
                   style: _body(t, 9, color: t.accent, weight: FontWeight.w800),
                 ),
                 const SizedBox(height: 3),
@@ -2427,7 +2413,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
       ),
       (
         'Les produits sont-ils en stock ?',
-        'Oui, toutes les quantités affichées sont mises à jour en temps réel.'
+        'Oui, la disponibilité affichée est mise à jour en temps réel.'
       ),
     ];
 

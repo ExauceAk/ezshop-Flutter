@@ -361,7 +361,6 @@ class MarketApi {
     bool isNeuf = true,
     bool isNegotiable = true,
     List<String> imageUrls = const [],
-    int quantity = 1,
   }) async {
     final data = await _client.request('POST', '/products', body: {
       'name': name.trim(),
@@ -375,7 +374,6 @@ class MarketApi {
       'shopId': shopId,
       'isNeuf': isNeuf,
       'isNegotiable': isNegotiable,
-      'quantity': quantity,
     });
     return Product.fromJson(data as Map<String, dynamic>);
   }
@@ -575,19 +573,10 @@ class MarketApi {
     return data is Map<String, dynamic> ? data : const {};
   }
 
-  Future<void> addToCart(String productId, {int quantity = 1}) async {
+  Future<void> addToCart(String productId) async {
     await _client.request('POST', '/cart', body: {
       'productId': productId,
-      'quantity': quantity,
     });
-  }
-
-  Future<void> updateCartItem(String productId, int quantity) async {
-    await _client.request(
-      'PATCH',
-      '/cart/$productId',
-      body: {'quantity': quantity},
-    );
   }
 
   Future<void> removeFromCart(String productId) async {

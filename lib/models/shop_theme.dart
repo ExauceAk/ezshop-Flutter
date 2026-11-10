@@ -680,7 +680,7 @@ const List<ShopTheme> storefrontThemes = [
         'Palais géométrique & savoir-faire ancestral : frise octogonale, portail en losange et cartes à double encadrement',
     category: 'Artisanat & Maison',
     signature:
-        'Frise géométrique ◆ + Portail octogonal + Cartes à coins ciselés',
+        'Frise géométrique + Portail octogonal + Cartes à coins ciselés',
     sections: ['craftsmanship', 'trust-badges'],
     demoShopName: 'Dar Al-Andalus',
     demoEyebrow: 'Haute Tradition & Géométrie',
@@ -1173,7 +1173,7 @@ const List<ShopTheme> storefrontThemes = [
         'Naviguez par rayon, repérez nos offres du jour et envoyez votre panier complet directement sur WhatsApp pour une préparation express.',
     demoAboutTitle: 'Votre commerce de proximité, encore plus simple',
     demoAboutText:
-        'Fini l’attente : choisissez vos articles en ligne, vérifiez les quantités en stock et récupérez ou faites-vous livrer votre commande dans la journée.',
+        'Fini l’attente : choisissez vos articles en ligne, vérifiez la disponibilité en stock et récupérez ou faites-vous livrer votre commande dans la journée.',
     previewImage:
         'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80',
     swatch: ['#16a34a', '#eab308', '#f8fafc'],

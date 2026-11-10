@@ -12,9 +12,9 @@ enum AppLanguage {
   /// Name shown in the language picker, always in its own language so a user
   /// who lost their way can still find theirs.
   String get nativeName => switch (this) {
-        AppLanguage.fr => 'Français',
-        AppLanguage.en => 'English',
-      };
+    AppLanguage.fr => 'Français',
+    AppLanguage.en => 'English',
+  };
 
   static AppLanguage fromCode(String? code) {
     return AppLanguage.values.firstWhere(
@@ -81,7 +81,8 @@ class AppStrings {
     'auth.login.noAccount': 'Pas encore de compte ?',
     'auth.login.createAccount': "S'inscrire",
     'auth.signup.title': 'Créer un compte',
-    'auth.signup.subtitle': 'Rejoignez notre marketplace et commencez à acheter/vendre',
+    'auth.signup.subtitle':
+        'Rejoignez notre marketplace et commencez à acheter/vendre',
     'auth.signup.name': 'Nom complet',
     'auth.signup.confirm': 'Confirmer le mot de passe',
     'auth.signup.cta': 'Créer mon compte',
@@ -121,7 +122,8 @@ class AppStrings {
     // ─── Favorites ───
     'favorites.title': 'Mes Favoris',
     'favorites.empty.title': 'Aucun favori pour le moment',
-    'favorites.empty.subtitle': 'Appuyez sur ♡ pour ajouter un produit',
+    'favorites.empty.subtitle':
+        'Ajoutez un produit à vos favoris pour le retrouver ici',
     'favorites.added': 'Ajouté aux favoris',
     'favorites.removed': 'Retiré des favoris',
     'favorites.failed': 'Impossible de modifier les favoris',
@@ -163,12 +165,14 @@ class AppStrings {
     'product.soldBy': 'Vendu par',
     'product.rate': '• Noter',
     'product.noReviews': 'Pas encore d\'avis',
-    'product.negotiableHint': 'Prix négociable : faites votre offre sur WhatsApp.',
+    'product.negotiableHint':
+        'Prix négociable : faites votre offre sur WhatsApp.',
     'product.orderWhatsapp': 'Commander via WhatsApp',
     'product.unknownShop': 'Boutique inconnue',
     'product.noWhatsapp':
         'WhatsApp indisponible : cette boutique n\'a pas renseigné de numéro.',
-    'product.orderAlreadyRecorded': 'Commande déjà enregistrée pour aujourd\'hui',
+    'product.orderAlreadyRecorded':
+        'Commande déjà enregistrée pour aujourd\'hui',
     'product.orderRecorded': 'Commande enregistrée ! Ouverture de WhatsApp…',
     'product.orderFailed': 'Commande non enregistrée',
     'product.whatsappMessage':
@@ -232,8 +236,7 @@ class AppStrings {
     'form.name': 'Nom de la boutique',
     'form.domain': 'Nom de domaine',
     'form.domainHint': 'maboutique',
-    'form.domainHelper':
-        'Votre boutique sera visible sur {domain}.{appDomain}',
+    'form.domainHelper': 'Votre boutique sera visible sur {domain}.{appDomain}',
     'form.whatsapp': 'Numéro WhatsApp',
     'form.whatsappHint': '77 000 00 00',
     'form.coverSection': 'Section de couverture',
@@ -259,11 +262,11 @@ class AppStrings {
     'form.choose': 'Choisir',
     'form.create.title': 'Créer ma boutique',
     'form.create.cta': 'Créer ma boutique',
-    'form.create.success': 'Boutique créée avec succès ! 🎉',
+    'form.create.success': 'Boutique créée avec succès !',
     'form.create.failed': 'Impossible de créer la boutique',
     'form.update.title': 'Personnaliser la boutique',
     'form.update.cta': 'Enregistrer',
-    'form.update.success': 'Boutique mise à jour ✅',
+    'form.update.success': 'Boutique mise à jour',
     'form.update.failed': 'Impossible de modifier cette boutique',
     'form.uploadFailed': "L'image n'a pas pu être envoyée",
 
@@ -306,7 +309,8 @@ class AppStrings {
     'notifications.empty': 'Aucune notification pour le moment',
     'notifications.markAllRead': 'Tout marquer comme lu',
     'notifications.unreadBadge': '{count} non lue(s)',
-    'notifications.allRead': 'Toutes les notifications ont été marquées comme lues',
+    'notifications.allRead':
+        'Toutes les notifications ont été marquées comme lues',
     'notifications.failed': 'Impossible de mettre à jour les notifications',
 
     // ─── Language ───
@@ -332,7 +336,8 @@ class AppStrings {
         'Votre adresse e-mail, votre nom d\u2019utilisateur et vos informations personnelles',
     'delete.items.shops':
         'Vos boutiques, ainsi que leurs produits, logos et bannières',
-    'delete.items.orders': 'Les commandes reçues et celles que vous avez passées',
+    'delete.items.orders':
+        'Les commandes reçues et celles que vous avez passées',
     'delete.items.reviews': 'Vos avis laissés sur les autres boutiques',
     'delete.items.favorites': 'Vos favoris et le contenu de votre panier',
     'delete.items.activity': 'Votre historique d\u2019activité',
@@ -346,7 +351,8 @@ class AppStrings {
     'signup.termsPrefix': 'J\u2019accepte la ',
     'signup.termsLink': 'politique de confidentialité',
     'signup.termsSuffix': ' et la suppression de mon compte',
-    'signup.termsRequired': 'Vous devez accepter la politique de confidentialité',
+    'signup.termsRequired':
+        'Vous devez accepter la politique de confidentialité',
     'help.subtitle':
         'Une question sur une commande, un produit ou votre boutique ? Écrivez-nous sur WhatsApp, nous répondons rapidement.',
     'help.cta': 'Écrire sur WhatsApp',
@@ -407,7 +413,8 @@ class AppStrings {
 
     // ─── Shop list ───
     'shop.list.empty': 'Aucune boutique',
-    'shop.list.emptySubtitle': 'Vous n\'avez pas encore de boutique. Créez la première pour vendre vos produits.',
+    'shop.list.emptySubtitle':
+        'Vous n\'avez pas encore de boutique. Créez la première pour vendre vos produits.',
     'shop.list.createFirst': 'Créer ma première boutique',
 
     // ─── Shop webview ───
@@ -517,7 +524,8 @@ class AppStrings {
     // ─── Favorites ───
     'favorites.title': 'My favorites',
     'favorites.empty.title': 'No favorites yet',
-    'favorites.empty.subtitle': 'Tap ♡ to save a product',
+    'favorites.empty.subtitle':
+        'Save a product to your favorites to find it here',
     'favorites.added': 'Added to favorites',
     'favorites.removed': 'Removed from favorites',
     'favorites.failed': 'Could not update favorites',
@@ -577,8 +585,7 @@ class AppStrings {
     'rating.update': 'Update',
     'rating.none': 'No reviews yet',
     'rating.summary': '{average} / 5 • {count} reviews',
-    'rating.hint':
-        'One rating per shop: you can change it at any time.',
+    'rating.hint': 'One rating per shop: you can change it at any time.',
     'rating.thanks': 'Thanks for your rating!',
     'rating.updated': 'Your rating has been updated',
     'rating.failed': 'Could not save your rating',
@@ -654,11 +661,11 @@ class AppStrings {
     'form.choose': 'Choose',
     'form.create.title': 'Create my shop',
     'form.create.cta': 'Create my shop',
-    'form.create.success': 'Shop created! 🎉',
+    'form.create.success': 'Shop created!',
     'form.create.failed': 'Could not create the shop',
     'form.update.title': 'Customise the shop',
     'form.update.cta': 'Save',
-    'form.update.success': 'Shop updated ✅',
+    'form.update.success': 'Shop updated',
     'form.update.failed': 'Could not update this shop',
     'form.uploadFailed': 'The image could not be uploaded',
 
@@ -802,7 +809,8 @@ class AppStrings {
 
     // ─── Shop list ───
     'shop.list.empty': 'No shop yet',
-    'shop.list.emptySubtitle': 'You have no shop yet. Create the first one to sell your products.',
+    'shop.list.emptySubtitle':
+        'You have no shop yet. Create the first one to sell your products.',
     'shop.list.createFirst': 'Create my first shop',
 
     // ─── Shop webview ───

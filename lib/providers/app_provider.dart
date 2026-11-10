@@ -447,10 +447,8 @@ class AppProvider extends ChangeNotifier {
       result = result.where((p) => p.categoryId == _selectedCategory).toList();
     }
     if (_searchQuery.isNotEmpty) {
-      result = result.where((p) =>
-          p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          p.description.toLowerCase().contains(_searchQuery.toLowerCase())
-      ).toList();
+      final q = _searchQuery.trim().toLowerCase();
+      result = result.where((p) => p.name.toLowerCase().contains(q)).toList();
     }
     return result;
   }

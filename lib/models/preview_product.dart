@@ -14,7 +14,6 @@ class PreviewProduct {
     this.isNeuf = true,
     this.isNegotiable = false,
     this.isAvailable = true,
-    this.quantity = 5,
     this.category = '',
   });
 
@@ -28,7 +27,6 @@ class PreviewProduct {
   final bool isNeuf;
   final bool isNegotiable;
   final bool isAvailable;
-  final int quantity;
   final String category;
 }
 
@@ -45,7 +43,6 @@ const List<PreviewProduct> samplePreviewProducts = [
     isNeuf: true,
     isNegotiable: false,
     isAvailable: true,
-    quantity: 12,
     category: 'Art de la Table',
   ),
   PreviewProduct(
@@ -59,7 +56,6 @@ const List<PreviewProduct> samplePreviewProducts = [
     isNeuf: true,
     isNegotiable: true,
     isAvailable: true,
-    quantity: 8,
     category: 'Cuisine',
   ),
   PreviewProduct(
@@ -72,7 +68,6 @@ const List<PreviewProduct> samplePreviewProducts = [
     isNeuf: true,
     isNegotiable: false,
     isAvailable: true,
-    quantity: 5,
     category: 'Luminaires',
   ),
   PreviewProduct(
@@ -86,7 +81,6 @@ const List<PreviewProduct> samplePreviewProducts = [
     isNeuf: true,
     isNegotiable: true,
     isAvailable: true,
-    quantity: 6,
     category: 'Art de la Table',
   ),
   PreviewProduct(
@@ -99,7 +93,6 @@ const List<PreviewProduct> samplePreviewProducts = [
     isNeuf: false,
     isNegotiable: true,
     isAvailable: true,
-    quantity: 3,
     category: 'Décoration',
   ),
   PreviewProduct(
@@ -112,7 +105,6 @@ const List<PreviewProduct> samplePreviewProducts = [
     isNeuf: true,
     isNegotiable: false,
     isAvailable: false,
-    quantity: 0,
     category: 'Art de la Table',
   ),
 ];
