@@ -103,7 +103,7 @@ class AppStrings {
 
     // ─── Home ───
     'home.guest': 'Invité',
-    'home.banner.tag': 'EZ Shop',
+    'home.banner.tag': '🏪 EZ Shop',
     'home.banner.title': 'Créez votre propre boutique',
     'home.banner.subtitle': 'Proposez vos produits et vendez en ligne',
     'home.banner.cta': 'Commencer →',
@@ -515,7 +515,7 @@ class AppStrings {
 
     // ─── Home ───
     'home.guest': 'Guest',
-    'home.banner.tag': 'EZ Shop',
+    'home.banner.tag': '🏪 EZ Shop',
     'home.banner.title': 'Create your own shop',
     'home.banner.subtitle': 'List your products and sell online',
     'home.banner.cta': 'Get started →',
