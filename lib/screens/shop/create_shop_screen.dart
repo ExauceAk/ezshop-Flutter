@@ -108,7 +108,7 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
 
     final l10n = context.l10n;
     const maxShopsPerAccount = 5;
-    if (provider.userShops.length >= maxShopsPerAccount) {
+    if (provider.getUserShops().length >= maxShopsPerAccount) {
       AppToast.error(
         l10n.t('shop.list.maxLimitError', {'max': '$maxShopsPerAccount'}),
         context: context,

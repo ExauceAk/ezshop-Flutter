@@ -115,6 +115,7 @@ class AppProvider extends ChangeNotifier {
 
   List<Product> get products => _products;
   List<Shop> get shops => _shops;
+  List<Shop> get userShops => getUserShops();
   List<Category> get categories => _categories;
   List<Order> get orders => _orders;
   List<Order> get receivedOrders => _receivedOrders;
