@@ -184,28 +184,46 @@ class _ShopScreenState extends State<ShopScreen> {
             ),
           ),
         ),
-        Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, -4)),
-            ],
-          ),
-          child: SizedBox(
-            width: double.infinity, height: 54,
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateShopScreen())),
-              icon: const Icon(Icons.add_rounded, size: 20),
-              label: Text(context.l10n.t('shop.list.new'),
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.primary,
-                side: const BorderSide(color: AppTheme.primary, width: 1.5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        Builder(
+          builder: (context) {
+            const maxShopsPerAccount = 5;
+            final reachedLimit = shops.length >= maxShopsPerAccount;
+            return Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, -4)),
+                ],
               ),
-            ),
-          ),
+              child: SizedBox(
+                width: double.infinity, height: 54,
+                child: OutlinedButton.icon(
+                  onPressed: reachedLimit
+                      ? () => AppToast.error(
+                            context.l10n.t('shop.list.maxLimitError', {'max': '$maxShopsPerAccount'}),
+                            context: context,
+                          )
+                      : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateShopScreen())),
+                  icon: Icon(reachedLimit ? Icons.lock_outline_rounded : Icons.add_rounded, size: 20),
+                  label: Text(
+                    reachedLimit
+                        ? context.l10n.t('shop.list.limitReached', {'max': '$maxShopsPerAccount'})
+                        : context.l10n.t('shop.list.new'),
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: reachedLimit ? AppTheme.textSecondary : AppTheme.primary,
+                    side: BorderSide(
+                      color: reachedLimit ? AppTheme.border : AppTheme.primary,
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ],
     );

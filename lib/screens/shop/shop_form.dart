@@ -85,8 +85,11 @@ class ShopFormData {
 
   /// Digits of the WhatsApp number, prefix included, used to build the
   /// `wa.me` link and shown in the storefront footer.
-  String get whatsappDigits =>
-      '$countryCode${whatsapp.replaceAll(RegExp(r'[^0-9]'), '')}';
+  String get whatsappDigits {
+    final national = whatsapp.replaceAll(RegExp(r'[^0-9]'), '');
+    if (national.isEmpty) return '';
+    return '$countryCode$national';
+  }
 
   String get whatsappLink =>
       whatsappDigits.isEmpty ? '' : 'https://wa.me/$whatsappDigits';

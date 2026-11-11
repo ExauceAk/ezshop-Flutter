@@ -107,6 +107,15 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
     if (!(_formKey.currentState?.validate() ?? true)) return;
 
     final l10n = context.l10n;
+    const maxShopsPerAccount = 5;
+    if (provider.userShops.length >= maxShopsPerAccount) {
+      AppToast.error(
+        l10n.t('shop.list.maxLimitError', {'max': '$maxShopsPerAccount'}),
+        context: context,
+      );
+      return;
+    }
+
     if (_data.name.trim().isEmpty) {
       AppToast.error(l10n.t('product.form.required'), context: context);
       return;

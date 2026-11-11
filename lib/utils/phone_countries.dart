@@ -233,7 +233,9 @@ PhoneCountry findPhoneCountryByDialCode(String dialCode) {
 /// Splits a stored `wa.me/<digits>` link or phone string into `(dialCode, nationalDigits)`
 /// by matching the longest country dial code first.
 (String, String) splitStoredPhoneLink(String link) {
-  final digits = link.replaceAll(RegExp(r'[^0-9]'), '');
+  final cleanLink = link.trim();
+  if (cleanLink.isEmpty) return ('221', '');
+  final digits = cleanLink.replaceAll(RegExp(r'[^0-9]'), '');
   if (digits.isEmpty) return ('221', '');
 
   // Sort dial codes from longest (4 digits) to shortest (1 digit).
@@ -241,12 +243,15 @@ PhoneCountry findPhoneCountryByDialCode(String dialCode) {
     ..sort((a, b) => b.dialCode.length.compareTo(a.dialCode.length));
 
   for (final country in sorted) {
+    if (digits == country.dialCode) {
+      return (country.dialCode, '');
+    }
     if (digits.startsWith(country.dialCode) &&
         digits.length > country.dialCode.length) {
       return (country.dialCode, digits.substring(country.dialCode.length));
     }
   }
-  return ('221', digits);
+  return ('221', '');
 }
 
 /// Non-blocking validation check for a national phone number under [country].

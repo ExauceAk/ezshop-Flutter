@@ -194,6 +194,9 @@ class AppStrings {
     // ─── Shops ───
     'shop.list.title': 'Mes boutiques',
     'shop.list.new': 'Nouvelle boutique',
+    'shop.list.limitReached': 'Limite atteinte ({max}/{max} boutiques)',
+    'shop.list.maxLimitError':
+        'Vous avez atteint la limite de {max} boutiques par compte.',
     'shop.detail.edit': 'Modifier',
     'shop.detail.personalise': 'Personnaliser la boutique',
     'shop.detail.stats.products': 'Produits',
@@ -600,6 +603,9 @@ class AppStrings {
     // ─── Shops ───
     'shop.list.title': 'My shops',
     'shop.list.new': 'New shop',
+    'shop.list.limitReached': 'Limit reached ({max}/{max} shops)',
+    'shop.list.maxLimitError':
+        'You have reached the limit of {max} shops per account.',
     'shop.detail.edit': 'Edit',
     'shop.detail.personalise': 'Customise the shop',
     'shop.detail.stats.products': 'Products',
