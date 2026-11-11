@@ -4,7 +4,7 @@ publish_to: 'none'
 # versionName+versionCode, read by the build as `flutter.versionName` and
 # `flutter.versionCode`. Bump it with `tool/bump_version.sh` before every
 # release build: Play rejects a bundle whose versionCode it has already seen.
-version: 1.0.3+4
+version: 1.0.4+5
 
 environment:
   sdk: ^3.9.2
