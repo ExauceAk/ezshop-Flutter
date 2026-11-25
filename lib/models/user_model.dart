@@ -13,7 +13,7 @@ class UserModel {
   UserModel({
     required this.id,
     required this.name,
-    required this.email,
+    this.email = '',
     this.phone = '',
     this.address = '',
     this.avatarUrl = '',
@@ -53,8 +53,8 @@ class UserModel {
       id: '${json['id']}',
       // The API names the display field "username"; the app calls it "name".
       name: json['username']?.toString() ?? json['name']?.toString() ?? '',
-      email: json['email']?.toString() ?? '',
       phone: json['phone']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
       address: json['address']?.toString() ?? '',
       avatarUrl: json['avatarUrl']?.toString() ?? '',
     );

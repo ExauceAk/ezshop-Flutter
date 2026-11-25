@@ -11,6 +11,7 @@ import '../../theme/app_theme.dart';
 import '../../utils/image_pick.dart';
 import '../../utils/phone_countries.dart';
 import '../../widgets/mini_theme_preview.dart';
+import '../../widgets/phone_input_field.dart';
 import 'theme_preview_sheet.dart';
 
 /// Everything the shop form collects.
@@ -923,99 +924,35 @@ class _ShopFormState extends State<ShopForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: () async {
-                  final picked = await showPhoneCountryPicker(
-                    context,
-                    selected: country,
-                  );
-                  if (picked != null) {
-                    _update(_data.copyWith(countryCode: picked.dialCode));
-                  }
-                },
-                child: Container(
-                  width: 122,
-                  height: 56,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isPhoneValid ? AppTheme.border : warningOrange,
-                      width: isPhoneValid ? 1 : 1.5,
+          TextFormField(
+            controller: _whatsapp,
+            keyboardType: TextInputType.phone,
+            maxLength: 15,
+            style: GoogleFonts.poppins(
+              color: isPhoneValid ? AppTheme.textPrimary : warningOrange,
+              fontWeight: isPhoneValid ? FontWeight.w400 : FontWeight.w600,
+            ),
+            decoration: InputDecoration(
+              labelText: l10n.t('form.whatsapp'),
+              counterText: '',
+              prefixIconConstraints:
+                  const BoxConstraints(minWidth: 0, minHeight: 0),
+              prefixIcon: PhoneCountryPrefix(
+                selectedCountry: country,
+                onCountryChanged: (picked) =>
+                    _update(_data.copyWith(countryCode: picked.dialCode)),
+              ),
+              enabledBorder: isPhoneValid ? null : warningBorder,
+              focusedBorder: isPhoneValid ? null : warningBorder,
+              suffixIcon: isPhoneValid
+                  ? null
+                  : const Icon(
+                      Icons.warning_amber_rounded,
+                      color: warningOrange,
+                      size: 20,
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: Text(
-                          country.isoCode,
-                          style: GoogleFonts.poppins(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '+${country.dialCode}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                      ),
-                      const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 18,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextFormField(
-                  controller: _whatsapp,
-                  keyboardType: TextInputType.phone,
-                  maxLength: 15,
-                  style: GoogleFonts.poppins(
-                    color: isPhoneValid ? AppTheme.textPrimary : warningOrange,
-                    fontWeight:
-                        isPhoneValid ? FontWeight.w400 : FontWeight.w600,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: l10n.t('form.whatsapp'),
-                    counterText: '',
-                    enabledBorder: isPhoneValid ? null : warningBorder,
-                    focusedBorder: isPhoneValid ? null : warningBorder,
-                    suffixIcon: isPhoneValid
-                        ? null
-                        : const Icon(
-                            Icons.warning_amber_rounded,
-                            color: warningOrange,
-                            size: 20,
-                          ),
-                  ),
-                  onChanged: (value) => _update(_data.copyWith(whatsapp: value)),
-                ),
-              ),
-            ],
+            ),
+            onChanged: (value) => _update(_data.copyWith(whatsapp: value)),
           ),
           if (!isPhoneValid) ...[
             const SizedBox(height: 6),

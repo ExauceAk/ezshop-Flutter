@@ -8,7 +8,13 @@ import '../config/app_config.dart';
 
 /// Error raised by [ApiClient] when the API answers with a failure status.
 class ApiException implements Exception {
-  ApiException(this.message, {this.statusCode, this.errors});
+  ApiException(
+    this.message, {
+    this.statusCode,
+    this.errors,
+    this.code,
+    this.payload,
+  });
 
   /// Message safe to show to the user, already in French.
   final String message;
@@ -18,6 +24,12 @@ class ApiException implements Exception {
 
   /// Per-field validation messages returned by the API, when present.
   final Map<String, String>? errors;
+
+  /// Machine-readable error code returned by the API (e.g. PHONE_NOT_VERIFIED).
+  final String? code;
+
+  /// Raw JSON error body returned by the API, when present.
+  final Map<String, dynamic>? payload;
 
   /// True when the API could not be reached at all, as opposed to refusing the
   /// request. The UI uses this to tell "wrong password" from "server down".
@@ -236,6 +248,8 @@ class ApiClient {
 
     // Validation errors come as { message: 'Validation failed', errors: { field: [...] } }.
     final rawErrors = map['errors'];
+    final errorCode = map['code']?.toString();
+    final errorPayload = map.isEmpty ? null : map;
     if (rawErrors is Map) {
       final parsed = <String, String>{};
       rawErrors.forEach((key, value) {
@@ -245,12 +259,16 @@ class ApiClient {
         _messageFor(map, 'Some information is invalid.'),
         statusCode: response.statusCode,
         errors: parsed,
+        code: errorCode,
+        payload: errorPayload,
       );
     }
 
     throw ApiException(
       _messageFor(map, 'Something went wrong.'),
       statusCode: response.statusCode,
+      code: errorCode,
+      payload: errorPayload,
     );
   }
 

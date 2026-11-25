@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_toast.dart';
+import '../../utils/phone_countries.dart';
+import '../../widgets/phone_input_field.dart';
 import '../settings/privacy_screen.dart';
+import 'verify_otp_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -18,9 +22,10 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  PhoneCountry _selectedCountry = findPhoneCountryByDialCode('229');
 
   /// Consent to the privacy policy and to the account deletion terms.
   bool _acceptedTerms = false;
@@ -31,13 +36,13 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleSignup() async {
+  Future<void> _handleSignup() async {
     if (_isLoading) return;
     if (!_formKey.currentState!.validate()) return;
     final l10n = context.l10n;
@@ -48,31 +53,44 @@ class _SignupScreenState extends State<SignupScreen> {
       AppToast.error(l10n.t('signup.termsRequired'), context: context);
       return;
     }
+
+    final fullPhone = composeInternationalPhone(
+      _selectedCountry,
+      _phoneController.text,
+    );
+
     setState(() => _isLoading = true);
     final provider = context.read<AppProvider>();
-    final success = await provider.signup(
+    final verifiedPhone = await provider.register(
       _nameController.text,
-      _emailController.text,
+      fullPhone,
       _passwordController.text,
       _confirmPasswordController.text,
     );
     if (!mounted) return;
     setState(() => _isLoading = false);
-    if (success && mounted) {
-      Navigator.pushReplacementNamed(context, '/home');
-      AppToast.success(l10n.t('auth.signup.success'));
+
+    if (verifiedPhone != null) {
+      AppToast.success(l10n.t('auth.otp.sent'), context: context);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VerifyOtpScreen(phone: verifiedPhone),
+        ),
+      );
       return;
     }
-    if (!success && mounted) {
-      AppToast.error(
-        provider.authError ?? "Erreur d'inscription",
-        context: context,
-      );
-    }
+
+    AppToast.error(
+      provider.authError ?? l10n.t('auth.signup.error'),
+      context: context,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -87,7 +105,7 @@ class _SignupScreenState extends State<SignupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                context.l10n.t('auth.signup.title'),
+                l10n.t('auth.signup.title'),
                 style: GoogleFonts.poppins(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
@@ -96,8 +114,11 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                context.l10n.t('auth.signup.subtitle'),
-                style: GoogleFonts.poppins(fontSize: 14, color: AppTheme.textSecondary),
+                l10n.t('auth.signup.subtitle'),
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: AppTheme.textSecondary,
+                ),
               ),
               const SizedBox(height: 32),
 
@@ -106,77 +127,119 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildLabel(context.l10n.t('auth.signup.name')),
+                    _buildLabel(l10n.t('auth.signup.name')),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _nameController,
+                      enabled: !_isLoading,
                       maxLength: 20,
                       textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
-                        hintText: context.l10n.t('auth.signup.nameHint'),
-                        prefixIcon: Icon(Icons.person_outline, color: AppTheme.textHint),
+                        hintText: l10n.t('auth.signup.nameHint'),
+                        prefixIcon: const Icon(
+                          Icons.person_outline,
+                          color: AppTheme.textHint,
+                        ),
                       ),
-                      validator: (v) => v == null || v.isEmpty ? context.l10n.t('auth.signup.nameRequired') : null,
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? l10n.t('auth.signup.nameRequired')
+                          : null,
                     ),
                     const SizedBox(height: 20),
-                    _buildLabel(context.l10n.t('auth.login.email')),
+                    _buildLabel(l10n.t('auth.login.phone')),
                     const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _emailController,
-                      maxLength: 100,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        hintText: context.l10n.t('auth.login.emailHint'),
-                        counterText: '',
-                        prefixIcon: Icon(Icons.email_outlined, color: AppTheme.textHint),
-                      ),
+                    PhoneInputField(
+                      selectedCountry: _selectedCountry,
+                      onCountryChanged: (c) =>
+                          setState(() => _selectedCountry = c),
+                      controller: _phoneController,
+                      enabled: !_isLoading,
+                      textInputAction: TextInputAction.next,
                       validator: (v) {
-                        if (v == null || v.isEmpty) return context.l10n.t('auth.signup.emailRequired');
-                        if (!v.contains('@')) return context.l10n.t('auth.login.emailRequired');
+                        final text = v?.trim() ?? '';
+                        if (text.isEmpty) {
+                          return l10n.t('auth.signup.phoneRequired');
+                        }
+                        if (!isNationalPhoneValid(_selectedCountry, text)) {
+                          return l10n.t('auth.login.phoneInvalid');
+                        }
                         return null;
                       },
                     ),
                     const SizedBox(height: 20),
-                    _buildLabel(context.l10n.t('auth.login.password')),
+                    _buildLabel(l10n.t('auth.login.password')),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _passwordController,
+                      enabled: !_isLoading,
                       maxLength: 64,
                       obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
                         hintText: '••••••••',
                         counterText: '',
-                        prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.textHint),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                          color: AppTheme.textHint,
+                        ),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: AppTheme.textHint),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: AppTheme.textHint,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return context.l10n.t('auth.signup.passwordRequired');
-                        if (v.length < 6) return context.l10n.t('auth.login.passwordMin');
+                        if (v == null || v.isEmpty) {
+                          return l10n.t('auth.signup.passwordRequired');
+                        }
+                        if (v.length < 6) {
+                          return l10n.t('auth.login.passwordMin');
+                        }
                         return null;
                       },
                     ),
                     const SizedBox(height: 20),
-                    _buildLabel(context.l10n.t('auth.signup.confirm')),
+                    _buildLabel(l10n.t('auth.signup.confirm')),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _confirmPasswordController,
+                      enabled: !_isLoading,
                       maxLength: 64,
                       obscureText: _obscureConfirm,
+                      textInputAction: TextInputAction.done,
                       decoration: InputDecoration(
                         hintText: '••••••••',
                         counterText: '',
-                        prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.textHint),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                          color: AppTheme.textHint,
+                        ),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: AppTheme.textHint),
-                          onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                          icon: Icon(
+                            _obscureConfirm
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: AppTheme.textHint,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscureConfirm = !_obscureConfirm,
+                          ),
                         ),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return context.l10n.t('auth.signup.confirmRequired');
-                        if (v != _passwordController.text) return context.l10n.t('auth.signup.mismatch');
+                        if (v == null || v.isEmpty) {
+                          return l10n.t('auth.signup.confirmRequired');
+                        }
+                        if (v != _passwordController.text) {
+                          return l10n.t('auth.signup.mismatch');
+                        }
                         return null;
                       },
                     ),
@@ -217,16 +280,16 @@ class _SignupScreenState extends State<SignupScreen> {
                             height: 1.4,
                           ),
                           children: [
-                            TextSpan(text: context.l10n.t('signup.termsPrefix')),
+                            TextSpan(text: l10n.t('signup.termsPrefix')),
                             TextSpan(
-                              text: context.l10n.t('signup.termsLink'),
+                              text: l10n.t('signup.termsLink'),
                               style: GoogleFonts.poppins(
                                 color: AppTheme.primary,
                                 fontWeight: FontWeight.w600,
                                 decoration: TextDecoration.underline,
                               ),
                             ),
-                            TextSpan(text: context.l10n.t('signup.termsSuffix')),
+                            TextSpan(text: l10n.t('signup.termsSuffix')),
                           ],
                         ),
                       ),
@@ -241,8 +304,15 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleSignup,
                   child: _isLoading
-                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                      : const Text("S'inscrire"),
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Text(l10n.t('auth.signup.cta')),
                 ),
               ),
               const SizedBox(height: 24),
@@ -251,18 +321,22 @@ class _SignupScreenState extends State<SignupScreen> {
                   onPressed: () => Navigator.pop(context),
                   child: RichText(
                     text: TextSpan(
-                      text: context.l10n.t('auth.login.haveAccount'),
+                      text: '${l10n.t('auth.login.haveAccount')} ',
                       style: GoogleFonts.poppins(color: AppTheme.textSecondary),
                       children: [
                         TextSpan(
-                          text: context.l10n.t('auth.login.cta'),
-                          style: GoogleFonts.poppins(color: AppTheme.primary, fontWeight: FontWeight.w700),
+                          text: l10n.t('auth.login.cta'),
+                          style: GoogleFonts.poppins(
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -271,6 +345,12 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Widget _buildLabel(String text) {
-    return Text(text, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: AppTheme.textPrimary));
+    return Text(
+      text,
+      style: GoogleFonts.poppins(
+        fontWeight: FontWeight.w600,
+        color: AppTheme.textPrimary,
+      ),
+    );
   }
 }

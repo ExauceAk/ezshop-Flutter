@@ -35,10 +35,14 @@ class AppProvider extends ChangeNotifier {
   UserModel? _currentUser;
   bool _isLoggedIn = false;
   String? _authError;
+  String? _authErrorCode;
+  String? _pendingVerificationPhone;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoggedIn => _isLoggedIn;
   String? get authError => _authError;
+  String? get authErrorCode => _authErrorCode;
+  String? get pendingVerificationPhone => _pendingVerificationPhone;
 
   // ─── Language ───
 
@@ -256,15 +260,22 @@ class AppProvider extends ChangeNotifier {
   // AUTH
   // ═══════════════════════════════════
 
-  /// Signs in against the API.
-  ///
-  /// @returns true on success, false with [authError] set otherwise.
-  Future<bool> login(String email, String password) async {
+  void _resetAuthError() {
     _authError = null;
+    _authErrorCode = null;
+    _pendingVerificationPhone = null;
+  }
+
+  /// Signs in with phone + password (no OTP on login).
+  ///
+  /// @returns true on success, false with [authError] (and optionally
+  /// [authErrorCode] == 'PHONE_NOT_VERIFIED') set otherwise.
+  Future<bool> login(String phone, String password) async {
+    _resetAuthError();
     notifyListeners();
 
     try {
-      final session = await _api.login(email, password);
+      final session = await _api.login(phone, password);
       await _persistSession(session);
       _currentUser = session.user;
       _isLoggedIn = true;
@@ -273,33 +284,58 @@ class AppProvider extends ChangeNotifier {
       return true;
     } on ApiException catch (e) {
       _authError = e.message;
+      _authErrorCode = e.code;
+      if (e.code == 'PHONE_NOT_VERIFIED') {
+        _pendingVerificationPhone = e.payload?['phone']?.toString() ?? phone;
+      }
       notifyListeners();
       return false;
     }
   }
 
-  Future<bool> signup(
+  /// Starts registration by sending an SMS OTP.
+  ///
+  /// Returns the normalized phone string when the OTP is dispatched, or null on
+  /// failure (with [authError] set).
+  Future<String?> register(
     String name,
-    String email,
+    String phone,
     String password,
     String confirmPassword,
   ) async {
-    _authError = null;
+    _resetAuthError();
     notifyListeners();
 
     if (password != confirmPassword) {
-      _authError = 'Les mots de passe ne correspondent pas';
+      _authError = strings.t('auth.signup.mismatch');
       notifyListeners();
-      return false;
+      return null;
     }
 
     try {
-      final session = await _api.register(
+      final normalizedPhone = await _api.register(
         name: name,
-        email: email,
+        phone: phone,
         password: password,
         confirmPassword: confirmPassword,
       );
+      _pendingVerificationPhone = normalizedPhone;
+      notifyListeners();
+      return normalizedPhone;
+    } on ApiException catch (e) {
+      _authError = e.errors?.values.firstOrNull ?? e.message;
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Verifies the 6-digit registration OTP and starts the user session.
+  Future<bool> verifyRegisterOtp(String phone, String code) async {
+    _resetAuthError();
+    notifyListeners();
+
+    try {
+      final session = await _api.verifyRegisterOtp(phone: phone, code: code);
       await _persistSession(session);
       _currentUser = session.user;
       _isLoggedIn = true;
@@ -313,16 +349,12 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  /// Requests a password reset email.
-  ///
-  /// The API deliberately answers the same way for unknown addresses, so a
-  /// success here never confirms the account exists.
-  Future<bool> forgotPassword(String email) async {
-    _authError = null;
+  Future<bool> resendRegisterOtp(String phone) async {
+    _resetAuthError();
     notifyListeners();
 
     try {
-      await _api.requestPasswordReset(email);
+      await _api.resendRegisterOtp(phone);
       notifyListeners();
       return true;
     } on ApiException catch (e) {
@@ -332,18 +364,60 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// Requests a password reset SMS OTP.
+  Future<bool> forgotPassword(String phone) async {
+    _resetAuthError();
+    notifyListeners();
+
+    try {
+      await _api.requestPasswordReset(phone);
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _authError = e.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Verifies the reset OTP and updates the password.
+  Future<bool> resetPassword({
+    required String phone,
+    required String code,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    _resetAuthError();
+    notifyListeners();
+
+    try {
+      await _api.resetPassword(
+        phone: phone,
+        code: code,
+        password: password,
+        confirmPassword: confirmPassword,
+      );
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _authError = e.errors?.values.firstOrNull ?? e.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     await _client.clearSession();
     _currentUser = null;
     _isLoggedIn = false;
-    _authError = null;
+    _resetAuthError();
     _products = [];
     _orders = [];
     notifyListeners();
   }
 
   void clearAuthError() {
-    _authError = null;
+    _resetAuthError();
     notifyListeners();
   }
 

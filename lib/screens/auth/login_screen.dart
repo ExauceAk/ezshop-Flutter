@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
 import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_toast.dart';
+import '../../utils/phone_countries.dart';
+import '../../widgets/phone_input_field.dart';
+import 'verify_otp_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,45 +19,66 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  PhoneCountry _selectedCountry = findPhoneCountryByDialCode('229');
   bool _obscurePassword = true;
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() async {
+  Future<void> _handleLogin() async {
     if (_isLoading) return;
     if (!_formKey.currentState!.validate()) return;
+
     final l10n = context.l10n;
+    final fullPhone = composeInternationalPhone(
+      _selectedCountry,
+      _phoneController.text,
+    );
+
     setState(() => _isLoading = true);
     final provider = context.read<AppProvider>();
     final success = await provider.login(
-      _emailController.text,
+      fullPhone,
       _passwordController.text,
     );
     if (!mounted) return;
     setState(() => _isLoading = false);
-    if (success && mounted) {
+
+    if (success) {
       Navigator.pushReplacementNamed(context, '/home');
       AppToast.success(l10n.t('auth.login.success'));
       return;
     }
-    if (!success && mounted) {
-      AppToast.error(
-        provider.authError ?? l10n.t('auth.login.error'),
-        context: context,
+
+    if (provider.authErrorCode == 'PHONE_NOT_VERIFIED') {
+      final phoneToVerify = provider.pendingVerificationPhone ?? fullPhone;
+      AppToast.info(l10n.t('auth.otp.unverifiedNotice'), context: context);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VerifyOtpScreen(phone: phoneToVerify),
+        ),
       );
+      return;
     }
+
+    AppToast.error(
+      provider.authError ?? l10n.t('auth.login.error'),
+      context: context,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -74,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               Center(
                 child: Text(
-                  context.l10n.t('about.title').isEmpty ? '' : 'EZ Shop',
+                  l10n.t('about.title').isEmpty ? '' : 'EZ Shop',
                   style: GoogleFonts.poppins(
                     fontSize: 32,
                     fontWeight: FontWeight.w800,
@@ -85,14 +110,14 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  context.l10n.t('auth.login.subtitle'),
+                  l10n.t('auth.login.subtitle'),
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: AppTheme.textSecondary,
                   ),
                 ),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 44),
 
               // ─── Form ───
               Form(
@@ -100,45 +125,64 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(context.l10n.t('auth.login.email'), style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _emailController,
-                      maxLength: 100,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        hintText: context.l10n.t('auth.login.emailHint'),
-                        counterText: '',
-                        prefixIcon: Icon(Icons.email_outlined, color: AppTheme.textHint),
+                    Text(
+                      l10n.t('auth.login.phone'),
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
                       ),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return context.l10n.t('auth.login.emailRequired');
-                        if (!v.contains('@')) return context.l10n.t('auth.login.emailRequired');
-                        return null;
-                      },
+                    ),
+                    const SizedBox(height: 8),
+                    PhoneInputField(
+                      selectedCountry: _selectedCountry,
+                      onCountryChanged: (c) =>
+                          setState(() => _selectedCountry = c),
+                      controller: _phoneController,
+                      enabled: !_isLoading,
+                      textInputAction: TextInputAction.next,
                     ),
                     const SizedBox(height: 20),
-                    Text(context.l10n.t('auth.login.password'), style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                    Text(
+                      l10n.t('auth.login.password'),
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _passwordController,
+                      enabled: !_isLoading,
                       maxLength: 64,
                       obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _handleLogin(),
                       decoration: InputDecoration(
                         hintText: '••••••••',
                         counterText: '',
-                        prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.textHint),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                          color: AppTheme.textHint,
+                        ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
                             color: AppTheme.textHint,
                           ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return context.l10n.t('auth.login.passwordRequired');
-                        if (v.length < 6) return context.l10n.t('auth.login.passwordMin');
+                        if (v == null || v.isEmpty) {
+                          return l10n.t('auth.login.passwordRequired');
+                        }
+                        if (v.length < 6) {
+                          return l10n.t('auth.login.passwordMin');
+                        }
                         return null;
                       },
                     ),
@@ -149,10 +193,14 @@ class _LoginScreenState extends State<LoginScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () => Navigator.pushNamed(context, '/forgot-password'),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, '/forgot-password'),
                   child: Text(
-                    context.l10n.t('auth.login.forgot'),
-                    style: GoogleFonts.poppins(color: AppTheme.primary, fontWeight: FontWeight.w500),
+                    l10n.t('auth.login.forgot'),
+                    style: GoogleFonts.poppins(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
@@ -168,34 +216,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ? const SizedBox(
                           width: 24,
                           height: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
                         )
-                      : Text(context.l10n.t('auth.login.cta')),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ─── Divider ───
-              Row(
-                children: [
-                  const Expanded(child: Divider()),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('ou', style: GoogleFonts.poppins(color: AppTheme.textSecondary)),
-                  ),
-                  const Expanded(child: Divider()),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // ─── Social Login ───
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.g_mobiledata, size: 24),
-                  label: Text(context.l10n.t('auth.login.google'), style: GoogleFonts.poppins()),
+                      : Text(l10n.t('auth.login.cta')),
                 ),
               ),
               const SizedBox(height: 32),
@@ -206,11 +232,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () => Navigator.pushNamed(context, '/signup'),
                   child: RichText(
                     text: TextSpan(
-                      text: 'Pas encore de compte ? ',
+                      text: '${l10n.t('auth.login.noAccount')} ',
                       style: GoogleFonts.poppins(color: AppTheme.textSecondary),
                       children: [
                         TextSpan(
-                          text: "S'inscrire",
+                          text: l10n.t('auth.login.createAccount'),
                           style: GoogleFonts.poppins(
                             color: AppTheme.primary,
                             fontWeight: FontWeight.w700,

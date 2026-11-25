@@ -6,6 +6,7 @@ import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_toast.dart';
+import '../../utils/phone_countries.dart';
 
 /// Account deletion.
 ///
@@ -202,7 +203,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           if (user != null) ...[
             const SizedBox(height: 10),
             Text(
-              l10n.t('delete.account', {'email': user.email}),
+              l10n.t('delete.account', {'phone': formatDisplayPhone(user.phone)}),
               style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textHint),
             ),
           ],

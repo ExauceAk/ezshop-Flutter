@@ -6,7 +6,9 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_toast.dart';
 import '../../utils/image_pick.dart';
+import '../../utils/phone_countries.dart';
 import '../../utils/price_format.dart';
+import '../../widgets/phone_input_field.dart';
 import '../common/coming_soon_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../settings/about_screen.dart';
@@ -41,7 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   _buildProfileHeader(
                     user?.name ?? context.l10n.t('profile.guest'),
-                    user?.email ?? '',
+                    formatDisplayPhone(user?.phone ?? ''),
                     user?.avatarUrl ?? '',
                   ),
                   const SizedBox(height: 20),
@@ -56,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileHeader(String name, String email, String avatarUrl) {
+  Widget _buildProfileHeader(String name, String phone, String avatarUrl) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -137,13 +139,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: Colors.white,
             ),
           ),
-          Text(
-            email,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.white.withOpacity(0.8),
+          if (phone.isNotEmpty)
+            Text(
+              phone,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.8),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -376,8 +379,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showEditProfileDialog(BuildContext context, AppProvider provider) {
     final user = provider.currentUser;
+    final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: user?.name ?? '');
-    final phoneController = TextEditingController(text: user?.phone ?? '');
+    final rawPhone = (user?.phone ?? '').trim();
+    final parts = rawPhone.isEmpty ? ('229', '') : splitStoredPhoneLink(rawPhone);
+    var selectedCountry = findPhoneCountryByDialCode(parts.$1);
+    final phoneController = TextEditingController(text: parts.$2);
     final addressController = TextEditingController(text: user?.address ?? '');
 
     showModalBottomSheet(
@@ -388,105 +395,134 @@ class _ProfileScreenState extends State<ProfileScreen> {
         var saving = false;
         return StatefulBuilder(
           builder: (ctx, setSheetState) => Container(
-            height: MediaQuery.of(ctx).size.height * 0.75,
-            padding: const EdgeInsets.all(24),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.88,
+            ),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              24,
+              24,
+              24 + MediaQuery.of(ctx).viewInsets.bottom,
+            ),
             decoration: const BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppTheme.border,
-                      borderRadius: BorderRadius.circular(2),
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppTheme.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 20),
+                    Text(
+                      context.l10n.t('profile.edit.title'),
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      context.l10n.t('profile.edit.name'),
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: nameController,
+                      enabled: !saving,
+                      maxLength: 20,
+                      decoration: InputDecoration(
+                        hintText: context.l10n.t('profile.edit.nameHint'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      context.l10n.t('profile.edit.phone'),
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    PhoneInputField(
+                      selectedCountry: selectedCountry,
+                      onCountryChanged: (c) =>
+                          setSheetState(() => selectedCountry = c),
+                      controller: phoneController,
+                      enabled: !saving,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      context.l10n.t('profile.edit.address'),
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: addressController,
+                      enabled: !saving,
+                      maxLength: 150,
+                      decoration: InputDecoration(
+                        hintText: context.l10n.t('profile.edit.addressHint'),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: saving
+                            ? null
+                            : () async {
+                                if (!formKey.currentState!.validate()) return;
+                                final l10n = ctx.l10n;
+                                final fullPhone = composeInternationalPhone(
+                                  selectedCountry,
+                                  phoneController.text,
+                                );
+                                setSheetState(() => saving = true);
+                                final saved = await provider.updateProfile(
+                                  name: nameController.text,
+                                  phone: fullPhone,
+                                  address: addressController.text,
+                                );
+                                if (!ctx.mounted) return;
+                                setSheetState(() => saving = false);
+                                if (!saved) {
+                                  AppToast.error(
+                                    provider.dataError ??
+                                        l10n.t('profile.edit.failed'),
+                                    context: ctx,
+                                  );
+                                  return;
+                                }
+                                Navigator.pop(ctx);
+                                AppToast.success(l10n.t('profile.edit.saved'));
+                              },
+                        child: saving
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(context.l10n.t('common.save')),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                Text(context.l10n.t('profile.edit.title'),
-                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 24),
-                Text(context.l10n.t('profile.edit.name'),
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: nameController,
-                  enabled: !saving,
-                  maxLength: 20,
-                  decoration: InputDecoration(
-                    hintText: context.l10n.t('profile.edit.nameHint'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(context.l10n.t('profile.edit.phone'),
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: phoneController,
-                  enabled: !saving,
-                  maxLength: 20,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    hintText: context.l10n.t('profile.edit.phoneHint'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(context.l10n.t('profile.edit.address'),
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: addressController,
-                  enabled: !saving,
-                  maxLength: 150,
-                  decoration: InputDecoration(
-                    hintText: context.l10n.t('profile.edit.addressHint'),
-                  ),
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: saving
-                        ? null
-                        : () async {
-                            final l10n = ctx.l10n;
-                            setSheetState(() => saving = true);
-                            final saved = await provider.updateProfile(
-                              name: nameController.text,
-                              phone: phoneController.text,
-                              address: addressController.text,
-                            );
-                            if (!ctx.mounted) return;
-                            setSheetState(() => saving = false);
-                            if (!saved) {
-                              AppToast.error(
-                                provider.dataError ?? l10n.t('profile.edit.failed'),
-                                context: ctx,
-                              );
-                              return;
-                            }
-                            Navigator.pop(ctx);
-                            AppToast.success(l10n.t('profile.edit.saved'));
-                          },
-                    child: saving
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(context.l10n.t('common.save')),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         );

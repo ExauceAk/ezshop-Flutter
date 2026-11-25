@@ -285,6 +285,32 @@ bool isNationalPhoneValid(PhoneCountry country, String rawInput) {
   return matchesDirect || matchesWithoutTrunk;
 }
 
+/// Composes an E.164 digits-only international number (without leading '+')
+/// from [country] and [nationalRaw].
+///
+/// Preserves Benin's 10-digit `01XXXXXXXX` trunk prefix while stripping the
+/// single leading `0` for countries like France (`06...` -> `336...`).
+String composeInternationalPhone(PhoneCountry country, String nationalRaw) {
+  final digits = nationalRaw.replaceAll(RegExp(r'[^0-9]'), '');
+  if (digits.isEmpty) return '';
+  if (digits.startsWith(country.dialCode) &&
+      digits.length >= country.dialCode.length + country.minLength) {
+    return digits;
+  }
+  final nationalDigits =
+      digits.startsWith('0') && digits.length > country.maxLength
+          ? digits.substring(1)
+          : digits;
+  return '${country.dialCode}$nationalDigits';
+}
+
+/// Formats a stored digits-only phone number with a leading '+' for display.
+String formatDisplayPhone(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return '';
+  return trimmed.startsWith('+') ? trimmed : '+$trimmed';
+}
+
 /// Opens a searchable modal bottom sheet allowing the user to pick any country's
 /// dial code.
 Future<PhoneCountry?> showPhoneCountryPicker(

@@ -133,11 +133,11 @@ class MarketApi {
 
   // ─── Auth ───
 
-  Future<AuthSession> login(String email, String password) async {
+  Future<AuthSession> login(String phone, String password) async {
     final data = await _client.request(
       'POST',
       '/auth/login',
-      body: {'identity': email.trim(), 'password': password},
+      body: {'phone': phone.trim(), 'password': password},
       authenticated: false,
     ) as Map<String, dynamic>;
 
@@ -148,9 +148,11 @@ class MarketApi {
     );
   }
 
-  Future<AuthSession> register({
+  /// Registers the account and triggers a 6-digit SMS OTP.
+  /// Returns the normalized phone number expecting OTP verification.
+  Future<String> register({
     required String name,
-    required String email,
+    required String phone,
     required String password,
     required String confirmPassword,
   }) async {
@@ -159,10 +161,24 @@ class MarketApi {
       '/auth/register',
       body: {
         'username': name.trim(),
-        'email': email.trim(),
+        'phone': phone.trim(),
         'password': password,
         'confirmPassword': confirmPassword,
       },
+      authenticated: false,
+    ) as Map<String, dynamic>;
+
+    return data['phone']?.toString() ?? phone.trim();
+  }
+
+  Future<AuthSession> verifyRegisterOtp({
+    required String phone,
+    required String code,
+  }) async {
+    final data = await _client.request(
+      'POST',
+      '/auth/verify-otp',
+      body: {'phone': phone.trim(), 'code': code.trim()},
       authenticated: false,
     ) as Map<String, dynamic>;
 
@@ -173,15 +189,40 @@ class MarketApi {
     );
   }
 
-  /// Asks the API to email a reset link.
-  ///
-  /// The API answers 201 whether or not the address exists, so this cannot
-  /// tell the caller anything beyond "request sent".
-  Future<void> requestPasswordReset(String email) async {
+  Future<void> resendRegisterOtp(String phone) async {
     await _client.request(
       'POST',
-      '/auth/send-forgot-password-link',
-      body: {'email': email.trim()},
+      '/auth/resend-otp',
+      body: {'phone': phone.trim()},
+      authenticated: false,
+    );
+  }
+
+  /// Asks the API to send a password reset SMS OTP.
+  Future<void> requestPasswordReset(String phone) async {
+    await _client.request(
+      'POST',
+      '/auth/forgot-password',
+      body: {'phone': phone.trim()},
+      authenticated: false,
+    );
+  }
+
+  Future<void> resetPassword({
+    required String phone,
+    required String code,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    await _client.request(
+      'POST',
+      '/auth/reset-password',
+      body: {
+        'phone': phone.trim(),
+        'code': code.trim(),
+        'password': password,
+        'confirmPassword': confirmPassword,
+      },
       authenticated: false,
     );
   }
@@ -193,15 +234,13 @@ class MarketApi {
 
   Future<UserModel> updateProfile({
     String? name,
-    String? email,
     String? phone,
     String? address,
     String? avatarUrl,
   }) async {
     final body = <String, dynamic>{
       if (name != null && name.isNotEmpty) 'username': name.trim(),
-      if (email != null && email.isNotEmpty) 'email': email.trim(),
-      if (phone != null) 'phone': phone.trim(),
+      if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
       if (address != null) 'address': address.trim(),
       // Empty means "keep the stored avatar": clearing it is a separate
       // decision, so an omitted field must not wipe the photo.
