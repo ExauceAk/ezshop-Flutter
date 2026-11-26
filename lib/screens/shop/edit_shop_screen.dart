@@ -27,15 +27,21 @@ class EditShopScreen extends StatefulWidget {
 }
 
 class _EditShopScreenState extends State<EditShopScreen> {
+  final _formKey = GlobalKey<FormState>();
   ShopFormData _data = const ShopFormData();
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    // The stored link is split back into prefix and national number so the
-    // seller edits a number rather than a URL.
-    final phone = _phoneParts(widget.shop.whatsappLink);
+    // Split stored wa.me link into dial code and national number, falling back
+    // to the seller's registration phone when the shop has no phone yet.
+    final userPhone = context.read<AppProvider>().currentUser?.phone ?? '';
+    final phone = phonePartsOrDefault(
+      widget.shop.whatsappLink,
+      fallbackPhone: userPhone,
+    );
+    final testimonials = widget.shop.themeConfig.testimonials;
 
     _data = ShopFormData(
       name: widget.shop.name,
@@ -52,12 +58,9 @@ class _EditShopScreenState extends State<EditShopScreen> {
       primaryColor: widget.shop.themeConfig.primaryColor,
       accentColor: widget.shop.themeConfig.accentColor,
       backgroundColor: widget.shop.themeConfig.backgroundColor,
+      enableCustomTestimonials: testimonials.isNotEmpty,
+      testimonials: testimonials,
     );
-  }
-
-  /// Splits a stored `wa.me` link back into prefix and national number.
-  static (String, String) _phoneParts(String link) {
-    return splitStoredPhoneLink(link);
   }
 
   @override
@@ -70,13 +73,16 @@ class _EditShopScreenState extends State<EditShopScreen> {
       ),
       body: Consumer<AppProvider>(
         builder: (context, provider, _) {
-          return ShopForm(
-            initial: _data,
-            themes: provider.themes,
-            existingLogo: widget.shop.logoUrl,
-            existingBanner: widget.shop.bannerUrl,
-            onChanged: (data) => _data = data,
-            onPreview: () => _openPreview(provider),
+          return Form(
+            key: _formKey,
+            child: ShopForm(
+              initial: _data,
+              themes: provider.themes,
+              existingLogo: widget.shop.logoUrl,
+              existingBanner: widget.shop.bannerUrl,
+              onChanged: (data) => _data = data,
+              onPreview: () => _openPreview(provider),
+            ),
           );
         },
       ),
@@ -141,6 +147,7 @@ class _EditShopScreenState extends State<EditShopScreen> {
 
   Future<void> _handleSave(AppProvider provider) async {
     if (_saving) return;
+    if (!(_formKey.currentState?.validate() ?? true)) return;
     final l10n = context.l10n;
     if (_data.name.trim().isEmpty) {
       AppToast.error(l10n.t('product.form.required'), context: context);

@@ -381,8 +381,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = provider.currentUser;
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: user?.name ?? '');
-    final rawPhone = (user?.phone ?? '').trim();
-    final parts = rawPhone.isEmpty ? ('229', '') : splitStoredPhoneLink(rawPhone);
+    final parts = phonePartsOrDefault(user?.phone ?? '');
     var selectedCountry = findPhoneCountryByDialCode(parts.$1);
     final phoneController = TextEditingController(text: parts.$2);
     final addressController = TextEditingController(text: user?.address ?? '');

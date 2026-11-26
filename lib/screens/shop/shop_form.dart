@@ -20,7 +20,7 @@ class ShopFormData {
     this.name = '',
     this.description = '',
     this.whatsapp = '',
-    this.countryCode = '221',
+    this.countryCode = kDefaultPhoneDialCode,
     this.heroTitle = '',
     this.heroSubtitle = '',
     this.aboutTitle = '',
@@ -30,8 +30,8 @@ class ShopFormData {
     this.primaryColor = '',
     this.accentColor = '',
     this.backgroundColor = '',
-    this.acceptsOnlinePayment = false,
-    this.paymentFields = const ['', '', '', '', ''],
+    this.enableCustomTestimonials = false,
+    this.testimonials = const [],
     this.logoFile,
     this.bannerFile,
   });
@@ -58,11 +58,11 @@ class ShopFormData {
   final String accentColor;
   final String backgroundColor;
 
-  /// Whether the seller filled in the advanced options.
-  final bool acceptsOnlinePayment;
+  /// Whether custom customer testimonials replace default theme reviews.
+  final bool enableCustomTestimonials;
 
-  /// The five optional detail fields of the advanced section.
-  final List<String> paymentFields;
+  /// Custom customer reviews configured by the seller.
+  final List<ShopTestimonial> testimonials;
 
   /// Images picked during this session; null means "keep the existing one".
   final File? logoFile;
@@ -74,22 +74,30 @@ class ShopFormData {
       backgroundColor.isNotEmpty;
 
   /// Builds the [ShopThemeConfig] payload for previews and API persistence.
-  ShopThemeConfig get themeConfig => ShopThemeConfig(
-        primaryColor: primaryColor,
-        accentColor: accentColor,
-        backgroundColor: backgroundColor,
-        heroTitle: heroTitle,
-        heroSubtitle: heroSubtitle,
-        aboutTitle: aboutTitle,
-        aboutText: aboutText,
-      );
+  ShopThemeConfig get themeConfig {
+    final validTestimonials = enableCustomTestimonials
+        ? testimonials
+            .where((t) => t.author.trim().isNotEmpty && t.text.trim().isNotEmpty)
+            .toList()
+        : const <ShopTestimonial>[];
 
-  /// Digits of the WhatsApp number, prefix included, used to build the
-  /// `wa.me` link and shown in the storefront footer.
+    return ShopThemeConfig(
+      primaryColor: primaryColor,
+      accentColor: accentColor,
+      backgroundColor: backgroundColor,
+      heroTitle: heroTitle,
+      heroSubtitle: heroSubtitle,
+      aboutTitle: aboutTitle,
+      aboutText: aboutText,
+      testimonials: validTestimonials,
+    );
+  }
+
+  /// Digits of the WhatsApp number, prefix included, using the same E.164
+  /// composition logic as auth and profile phone inputs.
   String get whatsappDigits {
-    final national = whatsapp.replaceAll(RegExp(r'[^0-9]'), '');
-    if (national.isEmpty) return '';
-    return '$countryCode$national';
+    final country = findPhoneCountryByDialCode(countryCode);
+    return composeInternationalPhone(country, whatsapp);
   }
 
   String get whatsappLink =>
@@ -109,8 +117,8 @@ class ShopFormData {
     String? primaryColor,
     String? accentColor,
     String? backgroundColor,
-    bool? acceptsOnlinePayment,
-    List<String>? paymentFields,
+    bool? enableCustomTestimonials,
+    List<ShopTestimonial>? testimonials,
     File? logoFile,
     File? bannerFile,
   }) {
@@ -128,8 +136,9 @@ class ShopFormData {
       primaryColor: primaryColor ?? this.primaryColor,
       accentColor: accentColor ?? this.accentColor,
       backgroundColor: backgroundColor ?? this.backgroundColor,
-      acceptsOnlinePayment: acceptsOnlinePayment ?? this.acceptsOnlinePayment,
-      paymentFields: paymentFields ?? this.paymentFields,
+      enableCustomTestimonials:
+          enableCustomTestimonials ?? this.enableCustomTestimonials,
+      testimonials: testimonials ?? this.testimonials,
       logoFile: logoFile ?? this.logoFile,
       bannerFile: bannerFile ?? this.bannerFile,
     );
@@ -238,7 +247,7 @@ class _ShopFormState extends State<ShopForm> {
   late final TextEditingController _aboutTitle;
   late final TextEditingController _aboutText;
   late final TextEditingController _slug;
-  late final List<TextEditingController> _payments;
+  final List<_TestimonialControllers> _reviewControllers = [];
 
   @override
   void initState() {
@@ -252,10 +261,9 @@ class _ShopFormState extends State<ShopForm> {
     _aboutTitle = TextEditingController(text: _data.aboutTitle);
     _aboutText = TextEditingController(text: _data.aboutText);
     _slug = TextEditingController(text: _data.slug);
-    _payments = List.generate(
-      _data.paymentFields.length,
-      (index) => TextEditingController(text: _data.paymentFields[index]),
-    );
+    for (final review in _data.testimonials) {
+      _reviewControllers.add(_TestimonialControllers.fromModel(review));
+    }
   }
 
   @override
@@ -287,8 +295,8 @@ class _ShopFormState extends State<ShopForm> {
     ]) {
       controller.dispose();
     }
-    for (final controller in _payments) {
-      controller.dispose();
+    for (final item in _reviewControllers) {
+      item.dispose();
     }
     super.dispose();
   }
@@ -308,13 +316,11 @@ class _ShopFormState extends State<ShopForm> {
     widget.onChanged(next);
   }
 
-  List<String> _replacePayment(int index, String value) {
-    final next = List<String>.of(_data.paymentFields);
-    while (next.length <= index) {
-      next.add('');
-    }
-    next[index] = value;
-    return next;
+  void _syncTestimonials({bool? enabled}) {
+    _update(_data.copyWith(
+      enableCustomTestimonials: enabled ?? _data.enableCustomTestimonials,
+      testimonials: _reviewControllers.map((c) => c.toModel()).toList(),
+    ));
   }
 
   Future<void> _pick({required bool isLogo}) async {
@@ -506,7 +512,7 @@ class _ShopFormState extends State<ShopForm> {
           ),
           const SizedBox(height: 8),
 
-          _paymentSection(),
+          _testimonialsSection(),
           const SizedBox(height: 24),
 
           // Custom brand colour section
@@ -780,50 +786,207 @@ class _ShopFormState extends State<ShopForm> {
     );
   }
 
-  Widget _paymentSection() {
+  Widget _testimonialsSection() {
     final l10n = context.l10n;
+    const maxReviews = 6;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle(l10n.t('form.payment.section')),
+        _sectionTitle(l10n.t('form.additional.section')),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: _data.acceptsOnlinePayment
+              color: _data.enableCustomTestimonials
                   ? AppTheme.primary
                   : AppTheme.border,
             ),
           ),
           child: CheckboxListTile(
-            value: _data.acceptsOnlinePayment,
-            onChanged: (value) =>
-                _update(_data.copyWith(acceptsOnlinePayment: value ?? false)),
+            value: _data.enableCustomTestimonials,
+            onChanged: (value) {
+              final nextEnabled = value ?? false;
+              if (nextEnabled && _reviewControllers.isEmpty) {
+                _reviewControllers.add(_TestimonialControllers());
+              }
+              _syncTestimonials(enabled: nextEnabled);
+            },
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
             activeColor: AppTheme.primary,
             title: Text(
-              l10n.t('form.payment.checkbox'),
-              style: GoogleFonts.poppins(fontSize: 14),
+              l10n.t('form.testimonials.toggle'),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              l10n.t('form.testimonials.subtitle'),
+              style: GoogleFonts.poppins(
+                fontSize: 11.5,
+                color: AppTheme.textSecondary,
+                height: 1.35,
+              ),
             ),
           ),
         ),
-        if (_data.acceptsOnlinePayment) ...[
-          const SizedBox(height: 16),
-          for (var i = 0; i < _payments.length; i++)
-            _field(
-              _payments[i],
-              l10n.t('form.payment.field${i + 1}'),
-              hint: l10n.t('form.payment.hint'),
-              lines: 1,
-              maxLength: 100,
-              fieldIndex: i,
+        if (_data.enableCustomTestimonials) ...[
+          const SizedBox(height: 14),
+          for (var i = 0; i < _reviewControllers.length; i++)
+            _testimonialCard(i, _reviewControllers[i], l10n),
+          if (_reviewControllers.length < maxReviews)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  _reviewControllers.add(_TestimonialControllers());
+                  _syncTestimonials();
+                },
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(l10n.t('form.testimonials.add')),
+              ),
             ),
         ],
       ],
+    );
+  }
+
+  Widget _testimonialCard(
+    int index,
+    _TestimonialControllers item,
+    AppStrings l10n,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                l10n.t('form.testimonials.itemTitle', {'index': '${index + 1}'}),
+                style: GoogleFonts.poppins(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () {
+                  final removed = _reviewControllers.removeAt(index);
+                  removed.dispose();
+                  _syncTestimonials(
+                    enabled: _reviewControllers.isEmpty
+                        ? false
+                        : _data.enableCustomTestimonials,
+                  );
+                },
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 20,
+                  color: AppTheme.error,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text(
+                l10n.t('form.testimonials.rating'),
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              for (var star = 1; star <= 5; star++)
+                GestureDetector(
+                  onTap: () {
+                    item.rating = star;
+                    _syncTestimonials();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Icon(
+                      star <= item.rating
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                      size: 22,
+                      color: star <= item.rating
+                          ? const Color(0xFFF59E0B)
+                          : AppTheme.textHint,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: item.author,
+            maxLength: 60,
+            textCapitalization: TextCapitalization.words,
+            decoration: InputDecoration(
+              labelText: l10n.t('form.testimonials.author'),
+              hintText: l10n.t('form.testimonials.authorHint'),
+              counterText: '',
+            ),
+            onChanged: (_) => _syncTestimonials(),
+            validator: (value) {
+              if (!_data.enableCustomTestimonials) return null;
+              if ((value?.trim() ?? '').isEmpty) {
+                return l10n.t('form.testimonials.authorRequired');
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: item.role,
+            maxLength: 60,
+            decoration: InputDecoration(
+              labelText: l10n.t('form.testimonials.role'),
+              hintText: l10n.t('form.testimonials.roleHint'),
+              counterText: '',
+            ),
+            onChanged: (_) => _syncTestimonials(),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: item.text,
+            maxLines: 3,
+            maxLength: 400,
+            decoration: InputDecoration(
+              labelText: l10n.t('form.testimonials.text'),
+              hintText: l10n.t('form.testimonials.textHint'),
+              alignLabelWithHint: true,
+            ),
+            onChanged: (_) => _syncTestimonials(),
+            validator: (value) {
+              if (!_data.enableCustomTestimonials) return null;
+              if ((value?.trim() ?? '').isEmpty) {
+                return l10n.t('form.testimonials.textRequired');
+              }
+              return null;
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -865,7 +1028,6 @@ class _ShopFormState extends State<ShopForm> {
     String? hint,
     String? helper,
     TextInputType? keyboard,
-    int? fieldIndex,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -900,8 +1062,6 @@ class _ShopFormState extends State<ShopForm> {
             heroSubtitle: controller == _heroSubtitle ? value : null,
             aboutTitle: controller == _aboutTitle ? value : null,
             aboutText: controller == _aboutText ? value : null,
-            paymentFields:
-                fieldIndex == null ? null : _replacePayment(fieldIndex, value),
           ));
         },
       ),
@@ -911,78 +1071,16 @@ class _ShopFormState extends State<ShopForm> {
   Widget _phoneField() {
     final l10n = context.l10n;
     final country = findPhoneCountryByDialCode(_data.countryCode);
-    final isPhoneValid = isNationalPhoneValid(country, _whatsapp.text);
-    const warningOrange = Color(0xFFF59E0B);
-
-    final warningBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: warningOrange, width: 1.8),
-    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextFormField(
-            controller: _whatsapp,
-            keyboardType: TextInputType.phone,
-            maxLength: 15,
-            style: GoogleFonts.poppins(
-              color: isPhoneValid ? AppTheme.textPrimary : warningOrange,
-              fontWeight: isPhoneValid ? FontWeight.w400 : FontWeight.w600,
-            ),
-            decoration: InputDecoration(
-              labelText: l10n.t('form.whatsapp'),
-              counterText: '',
-              prefixIconConstraints:
-                  const BoxConstraints(minWidth: 0, minHeight: 0),
-              prefixIcon: PhoneCountryPrefix(
-                selectedCountry: country,
-                onCountryChanged: (picked) =>
-                    _update(_data.copyWith(countryCode: picked.dialCode)),
-              ),
-              enabledBorder: isPhoneValid ? null : warningBorder,
-              focusedBorder: isPhoneValid ? null : warningBorder,
-              suffixIcon: isPhoneValid
-                  ? null
-                  : const Icon(
-                      Icons.warning_amber_rounded,
-                      color: warningOrange,
-                      size: 20,
-                    ),
-            ),
-            onChanged: (value) => _update(_data.copyWith(whatsapp: value)),
-          ),
-          if (!isPhoneValid) ...[
-            const SizedBox(height: 6),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.info_outline_rounded,
-                  size: 15,
-                  color: warningOrange,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    l10n.t('form.whatsappInvalid', {
-                      'country': country.localizedName(l10n.language),
-                      'expected': country.expectedDigitsLabel,
-                    }),
-                    style: GoogleFonts.poppins(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w500,
-                      color: warningOrange,
-                      height: 1.35,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
+      child: PhoneInputField(
+        selectedCountry: country,
+        onCountryChanged: (picked) =>
+            _update(_data.copyWith(countryCode: picked.dialCode)),
+        controller: _whatsapp,
+        labelText: l10n.t('form.whatsapp'),
+        onChanged: (value) => _update(_data.copyWith(whatsapp: value)),
       ),
     );
   }
@@ -1221,5 +1319,45 @@ class _ThemeCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _TestimonialControllers {
+  _TestimonialControllers({
+    String author = '',
+    String role = '',
+    String text = '',
+    this.rating = 5,
+  })  : author = TextEditingController(text: author),
+        role = TextEditingController(text: role),
+        text = TextEditingController(text: text);
+
+  factory _TestimonialControllers.fromModel(ShopTestimonial model) {
+    return _TestimonialControllers(
+      author: model.author,
+      role: model.role,
+      text: model.text,
+      rating: model.rating,
+    );
+  }
+
+  final TextEditingController author;
+  final TextEditingController role;
+  final TextEditingController text;
+  int rating;
+
+  ShopTestimonial toModel() {
+    return ShopTestimonial(
+      author: author.text,
+      role: role.text,
+      text: text.text,
+      rating: rating,
+    );
+  }
+
+  void dispose() {
+    author.dispose();
+    role.dispose();
+    text.dispose();
   }
 }

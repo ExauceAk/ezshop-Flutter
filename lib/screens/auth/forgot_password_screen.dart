@@ -27,7 +27,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
 
-  PhoneCountry _selectedCountry = findPhoneCountryByDialCode('229');
+  PhoneCountry _selectedCountry =
+      findPhoneCountryByDialCode(kDefaultPhoneDialCode);
   String _targetPhone = '';
   bool _codeSent = false;
   bool _isLoading = false;

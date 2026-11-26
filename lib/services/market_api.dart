@@ -336,7 +336,7 @@ class MarketApi {
     String logoUrl = '',
     String bannerUrl = '',
     required String theme,
-    required Map<String, String> themeConfig,
+    required Map<String, dynamic> themeConfig,
     required String subdomain,
   }) async {
     final data = await _client.request('POST', '/shops', body: {
@@ -360,7 +360,7 @@ class MarketApi {
     String? logoUrl,
     String? bannerUrl,
     String? theme,
-    Map<String, String>? themeConfig,
+    Map<String, dynamic>? themeConfig,
     String? subdomain,
   }) async {
     final body = <String, dynamic>{

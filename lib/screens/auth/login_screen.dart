@@ -21,7 +21,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  PhoneCountry _selectedCountry = findPhoneCountryByDialCode('229');
+  PhoneCountry _selectedCountry =
+      findPhoneCountryByDialCode(kDefaultPhoneDialCode);
   bool _obscurePassword = true;
   bool _isLoading = false;
 

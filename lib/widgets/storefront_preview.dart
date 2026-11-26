@@ -497,7 +497,9 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
                 if (sections.contains('lookbook')) _buildLookbook(t),
                 if (sections.contains('craftsmanship')) _buildCraftsmanship(t),
                 if (t.showAbout) _buildAboutSection(t),
-                if (sections.contains('testimonials')) _buildTestimonials(t),
+                if (sections.contains('testimonials') ||
+                    widget.config.testimonials.isNotEmpty)
+                  _buildTestimonials(t),
                 if (sections.contains('faq')) _buildFaq(t),
                 if (sections.contains('whatsapp-club')) _buildWhatsappClub(t),
                 _buildFooter(t),
@@ -2481,6 +2483,8 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
   }
 
   Widget _buildTestimonials(ShopTheme t) {
+    final customReviews = widget.config.testimonials;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 18, 16, 0),
       padding: const EdgeInsets.all(14),
@@ -2498,7 +2502,7 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  'Avis clients vérifiés (4.9/5)',
+                  'Ce que disent les clients de $_shopName',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: _heading(t, 14, weight: FontWeight.w700),
@@ -2506,16 +2510,40 @@ class _StorefrontPreviewState extends State<StorefrontPreview> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            '« Réponse ultra rapide sur WhatsApp et articles parfaitement conformes aux photos. Je recommande vivement $_shopName ! »',
-            style: _body(t, 11.5, color: t.muted, height: 1.4),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '— Aminata K., Cliente fidèle',
-            style: _body(t, 10, color: t.textColor, weight: FontWeight.w700),
-          ),
+          if (customReviews.isNotEmpty) ...[
+            for (final review in customReviews) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  for (var s = 0; s < review.rating.clamp(1, 5); s++)
+                    Icon(Icons.star_rounded, size: 13, color: t.accent),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '« ${review.text} »',
+                style: _body(t, 11.5, color: t.muted, height: 1.4),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                review.role.isNotEmpty
+                    ? '— ${review.author}, ${review.role}'
+                    : '— ${review.author}',
+                style: _body(t, 10, color: t.textColor, weight: FontWeight.w700),
+              ),
+            ],
+          ] else ...[
+            const SizedBox(height: 8),
+            Text(
+              '« Réponse ultra rapide sur WhatsApp et articles parfaitement conformes aux photos. Je recommande vivement $_shopName ! »',
+              style: _body(t, 11.5, color: t.muted, height: 1.4),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '— Aminata K., Cliente fidèle',
+              style: _body(t, 10, color: t.textColor, weight: FontWeight.w700),
+            ),
+          ],
         ],
       ),
     );

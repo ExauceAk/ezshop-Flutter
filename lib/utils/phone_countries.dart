@@ -221,22 +221,28 @@ const List<PhoneCountry> kPhoneCountries = [
   PhoneCountry(isoCode: 'ZW', dialCode: '263', nameFr: 'Zimbabwe', nameEn: 'Zimbabwe', minLength: 9, maxLength: 9),
 ];
 
-/// Finds a [PhoneCountry] by its dial code, defaulting to Senegal (+221).
+/// Default country dial code used across the entire app (Benin, +229).
+const String kDefaultPhoneDialCode = '229';
+
+/// Finds a [PhoneCountry] by its dial code, defaulting to Benin (+229).
 PhoneCountry findPhoneCountryByDialCode(String dialCode) {
   final clean = dialCode.replaceAll(RegExp(r'[^0-9]'), '');
   for (final country in kPhoneCountries) {
     if (country.dialCode == clean) return country;
   }
-  return kPhoneCountries.first;
+  return kPhoneCountries.firstWhere(
+    (country) => country.dialCode == kDefaultPhoneDialCode,
+    orElse: () => kPhoneCountries.first,
+  );
 }
 
 /// Splits a stored `wa.me/<digits>` link or phone string into `(dialCode, nationalDigits)`
 /// by matching the longest country dial code first.
 (String, String) splitStoredPhoneLink(String link) {
   final cleanLink = link.trim();
-  if (cleanLink.isEmpty) return ('221', '');
+  if (cleanLink.isEmpty) return (kDefaultPhoneDialCode, '');
   final digits = cleanLink.replaceAll(RegExp(r'[^0-9]'), '');
-  if (digits.isEmpty) return ('221', '');
+  if (digits.isEmpty) return (kDefaultPhoneDialCode, '');
 
   // Sort dial codes from longest (4 digits) to shortest (1 digit).
   final sorted = List<PhoneCountry>.of(kPhoneCountries)
@@ -251,7 +257,25 @@ PhoneCountry findPhoneCountryByDialCode(String dialCode) {
       return (country.dialCode, digits.substring(country.dialCode.length));
     }
   }
-  return ('221', '');
+  return (kDefaultPhoneDialCode, '');
+}
+
+/// Returns `(dialCode, nationalDigits)` from [stored], falling back to
+/// [fallbackPhone] (e.g. the user's registration phone) when [stored] is empty,
+/// and finally to `(kDefaultPhoneDialCode, '')`.
+(String, String) phonePartsOrDefault(
+  String stored, {
+  String? fallbackPhone,
+}) {
+  final primary = stored.trim();
+  if (primary.replaceAll(RegExp(r'[^0-9]'), '').isNotEmpty) {
+    return splitStoredPhoneLink(primary);
+  }
+  final fallback = (fallbackPhone ?? '').trim();
+  if (fallback.replaceAll(RegExp(r'[^0-9]'), '').isNotEmpty) {
+    return splitStoredPhoneLink(fallback);
+  }
+  return (kDefaultPhoneDialCode, '');
 }
 
 /// Non-blocking validation check for a national phone number under [country].

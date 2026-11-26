@@ -25,7 +25,8 @@ class _SignupScreenState extends State<SignupScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  PhoneCountry _selectedCountry = findPhoneCountryByDialCode('229');
+  PhoneCountry _selectedCountry =
+      findPhoneCountryByDialCode(kDefaultPhoneDialCode);
 
   /// Consent to the privacy policy and to the account deletion terms.
   bool _acceptedTerms = false;

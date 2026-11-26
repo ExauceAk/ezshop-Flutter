@@ -7,6 +7,7 @@ import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_toast.dart';
+import '../../utils/phone_countries.dart';
 import 'shop_form.dart';
 import 'theme_preview_sheet.dart';
 
@@ -26,6 +27,17 @@ class _CreateShopScreenState extends State<CreateShopScreen> {
   final _formKey = GlobalKey<FormState>();
   ShopFormData _data = const ShopFormData();
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final userPhone = context.read<AppProvider>().currentUser?.phone ?? '';
+    final phone = phonePartsOrDefault(userPhone);
+    _data = ShopFormData(
+      countryCode: phone.$1,
+      whatsapp: phone.$2,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

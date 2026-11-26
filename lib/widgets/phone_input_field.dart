@@ -94,6 +94,7 @@ class PhoneInputField extends StatelessWidget {
     this.validator,
     this.textInputAction,
     this.onFieldSubmitted,
+    this.onChanged,
   });
 
   final PhoneCountry selectedCountry;
@@ -105,6 +106,7 @@ class PhoneInputField extends StatelessWidget {
   final String? Function(String?)? validator;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onFieldSubmitted;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +118,7 @@ class PhoneInputField extends StatelessWidget {
       keyboardType: TextInputType.phone,
       textInputAction: textInputAction,
       onFieldSubmitted: onFieldSubmitted,
+      onChanged: onChanged,
       maxLength: 15,
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'[0-9\s.\-()]')),
