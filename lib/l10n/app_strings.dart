@@ -295,6 +295,7 @@ class AppStrings {
     // ─── Products (seller side) ───
     'product.form.add.title': 'Ajouter un produit',
     'product.form.edit.title': 'Modifier le produit',
+    'product.form.duplicate.title': 'Dupliquer le produit',
     'product.form.photos': 'Photos du produit',
     'product.form.addPhoto': 'Ajouter',
     'product.form.name': 'Nom du produit',
@@ -316,6 +317,7 @@ class AppStrings {
     'product.form.publishFailed': 'Impossible de publier le produit',
     'product.form.required': 'Ce champ est requis',
     'product.menu.edit': 'Modifier',
+    'product.menu.duplicate': 'Dupliquer',
     'product.menu.delete': 'Supprimer',
     'product.delete.title': 'Supprimer le produit ?',
     'product.delete.body': '« {name} » sera retiré de votre boutique.',
@@ -732,6 +734,7 @@ class AppStrings {
     // ─── Products (seller side) ───
     'product.form.add.title': 'Add a product',
     'product.form.edit.title': 'Edit the product',
+    'product.form.duplicate.title': 'Duplicate product',
     'product.form.photos': 'Product photos',
     'product.form.addPhoto': 'Add',
     'product.form.name': 'Product name',
@@ -753,6 +756,7 @@ class AppStrings {
     'product.form.publishFailed': 'Could not publish the product',
     'product.form.required': 'This field is required',
     'product.menu.edit': 'Edit',
+    'product.menu.duplicate': 'Duplicate',
     'product.menu.delete': 'Delete',
     'product.delete.title': 'Delete the product?',
     'product.delete.body': '“{name}” will be removed from your shop.',

@@ -10,18 +10,26 @@ import '../../theme/app_theme.dart';
 import '../../utils/app_toast.dart';
 import '../../utils/image_pick.dart';
 
-/// Product creation and edition, in one screen.
+/// Product creation, duplication, and edition, in one screen.
 ///
 /// The two used to be two forms that drifted apart; passing [existing] switches
-/// the labels and the submit path, so an edit can never miss a field the
-/// creation form asks for.
+/// to edit mode, while [duplicateFrom] pre-fills all fields and photos for a
+/// brand-new product.
 class AddProductScreen extends StatefulWidget {
   final String shopId;
 
   /// The product being edited, or null to create a new one.
   final Product? existing;
 
-  const AddProductScreen({super.key, required this.shopId, this.existing});
+  /// Optional source product whose fields and photos pre-fill a new product.
+  final Product? duplicateFrom;
+
+  const AddProductScreen({
+    super.key,
+    required this.shopId,
+    this.existing,
+    this.duplicateFrom,
+  });
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -35,16 +43,19 @@ class _AddProductScreenState extends State<AddProductScreen> {
   late bool _isNeuf;
   late bool _isNegotiable;
   late String _selectedCategoryId;
+  late List<String> _retainedImageUrls;
   List<File> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
   bool _submitting = false;
 
   bool get _isEditing => widget.existing != null;
+  bool get _isDuplicating => widget.existing == null && widget.duplicateFrom != null;
+  Product? get _sourceProduct => widget.existing ?? widget.duplicateFrom;
 
   @override
   void initState() {
     super.initState();
-    final product = widget.existing;
+    final product = _sourceProduct;
     _nameController = TextEditingController(text: product?.name ?? '');
     _descController = TextEditingController(text: product?.description ?? '');
     _priceController = TextEditingController(
@@ -53,6 +64,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _isNeuf = product?.isNeuf ?? true;
     _isNegotiable = product?.isNegotiable ?? true;
     _selectedCategoryId = product?.categoryId ?? '';
+    _retainedImageUrls = List<String>.of(product?.images ?? const []);
   }
 
   @override
@@ -76,18 +88,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
       }
     }
 
-    if (validFiles.length > 10) {
-      if (mounted) {
-        AppToast.info(
-          context.l10n.t('product.form.maxPhotos'),
-          context: context,
-        );
-      }
+    final remainingSlots =
+        (10 - _retainedImageUrls.length - _selectedImages.length).clamp(0, 10);
+
+    if (validFiles.length > remainingSlots && mounted) {
+      AppToast.info(
+        context.l10n.t('product.form.maxPhotos'),
+        context: context,
+      );
     }
 
-    if (validFiles.isNotEmpty && mounted) {
+    if (validFiles.isNotEmpty && remainingSlots > 0 && mounted) {
       setState(() {
-        _selectedImages = validFiles.take(10).toList();
+        _selectedImages = [
+          ..._selectedImages,
+          ...validFiles.take(remainingSlots),
+        ];
       });
     }
   }
@@ -98,15 +114,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
     });
   }
 
+  void _removeRetainedImage(int index) {
+    setState(() {
+      _retainedImageUrls.removeAt(index);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final titleKey = _isEditing
+        ? 'product.form.edit.title'
+        : _isDuplicating
+            ? 'product.form.duplicate.title'
+            : 'product.form.add.title';
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Text(
-          context.l10n.t(
-            _isEditing ? 'product.form.edit.title' : 'product.form.add.title',
-          ),
+          context.l10n.t(titleKey),
           style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
         ),
         backgroundColor: Colors.white,
@@ -167,23 +193,45 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         ],
                       );
                     }),
-                    // Photos already stored on the product, so editing shows
-                    // what the product looks like today.
-                    if (_isEditing && widget.existing!.images.isNotEmpty)
-                      for (final url in widget.existing!.images)
-                        Container(
-                          width: 120,
-                          height: 120,
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            image: DecorationImage(
-                              image: NetworkImage(url),
-                              fit: BoxFit.cover,
-                              alignment: Alignment.topCenter,
+                    // Photos retained from the edited or duplicated product.
+                    ..._retainedImageUrls.asMap().entries.map((entry) {
+                      return Stack(
+                        children: [
+                          Container(
+                            width: 120,
+                            height: 120,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              image: DecorationImage(
+                                image: NetworkImage(entry.value),
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                              ),
                             ),
                           ),
-                        ),
+                          Positioned(
+                            top: 4,
+                            right: 12,
+                            child: GestureDetector(
+                              onTap: () => _removeRetainedImage(entry.key),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.close,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
                     GestureDetector(
                       onTap: _pickImages,
                       child: Container(
@@ -507,9 +555,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final l10n = context.l10n;
-    // Creating requires a photo; editing keeps the stored one when the
-    // seller does not pick a new one.
-    if (_selectedImages.isEmpty && !_isEditing) {
+    // At least one photo (newly picked or retained from existing/duplicate)
+    // is required.
+    if (_selectedImages.isEmpty && _retainedImageUrls.isEmpty) {
       AppToast.error(l10n.t('product.form.needPhoto'), context: context);
       return;
     }
@@ -528,16 +576,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
     setState(() => _submitting = true);
 
     try {
-      // Photos live on the phone until they are uploaded, and only the
-      // returned URLs can be stored on the product. Every picked photo is
-      // sent: the seller chose a gallery, and dropping all but the first is
-      // what made the extra photos disappear.
-      final galleryUrls = _selectedImages.isEmpty
+      // Upload newly picked local photos, then combine with any retained URLs.
+      final uploadedUrls = _selectedImages.isEmpty
           ? <String>[]
           : await provider.uploadImages(_selectedImages, folder: 'products');
       if (!mounted) return;
 
-      if (_selectedImages.isNotEmpty && galleryUrls.isEmpty) {
+      if (_selectedImages.isNotEmpty && uploadedUrls.isEmpty) {
         AppToast.error(
           provider.dataError ?? l10n.t('product.form.uploadFailed'),
           context: context,
@@ -545,9 +590,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
         return;
       }
 
-      // The first photo is the cover; the gallery keeps every one of them,
-      // cover included, so the carousel does not lose it.
-      final coverUrl = galleryUrls.isEmpty ? '' : galleryUrls.first;
+      final allGalleryUrls = <String>[
+        ..._retainedImageUrls,
+        ...uploadedUrls,
+      ];
+      final coverUrl = allGalleryUrls.first;
 
       final success = _isEditing
           ? await provider.updateProduct(
@@ -557,8 +604,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
               price: parsedPrice,
               isNeuf: _isNeuf,
               isNegotiable: _isNegotiable,
-              imageUrl: coverUrl.isEmpty ? null : coverUrl,
-              imageUrls: galleryUrls.isEmpty ? null : galleryUrls,
+              imageUrl: coverUrl,
+              imageUrls: allGalleryUrls,
               categoryId: _selectedCategoryId,
             )
           : await provider.addProduct(
@@ -569,7 +616,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               isNeuf: _isNeuf,
               isNegotiable: _isNegotiable,
               imageUrl: coverUrl,
-              imageUrls: galleryUrls,
+              imageUrls: allGalleryUrls,
               categoryId: _selectedCategoryId,
             );
       if (!mounted) return;

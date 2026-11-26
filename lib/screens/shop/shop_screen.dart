@@ -899,7 +899,7 @@ Future<void> _confirmDeleteShop(Shop shop) async {
     );
   }
 
-  // ─── Product menu: edit or delete ───
+  // ─── Product menu: edit, duplicate, or delete ───
   Future<void> _onProductMenu(String action, Product product) async {
     switch (action) {
       case 'edit':
@@ -909,6 +909,17 @@ Future<void> _confirmDeleteShop(Shop shop) async {
             builder: (_) => AddProductScreen(
               shopId: product.shopId,
               existing: product,
+            ),
+          ),
+        );
+
+      case 'duplicate':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AddProductScreen(
+              shopId: product.shopId,
+              duplicateFrom: product,
             ),
           ),
         );
@@ -1221,6 +1232,16 @@ Future<void> _confirmDeleteShop(Shop shop) async {
                         const Icon(Icons.edit_outlined, size: 18, color: AppTheme.textPrimary),
                         const SizedBox(width: 10),
                         Text(context.l10n.t('product.menu.edit')),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'duplicate',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.copy_rounded, size: 18, color: AppTheme.textPrimary),
+                        const SizedBox(width: 10),
+                        Text(context.l10n.t('product.menu.duplicate')),
                       ],
                     ),
                   ),
